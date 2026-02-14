@@ -1,5 +1,5 @@
 const express = require('express');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const path = require('path');
 
 const app = express();
@@ -9,15 +9,15 @@ app.use(express.static(__dirname));
 
 app.post('/api/move', (req, res) => {
     try {
-        const { moves } = req.body;
+        const { moves, fen } = req.body;
         
         if (!moves || moves.length === 0) {
             return res.json({ error: 'No moves', move: null });
         }
 
-        const movesString = moves.join('');
         const enginePath = path.join(__dirname, '../core/engine');
-        const move = execSync(`"${enginePath}" "${movesString}"`).toString().trim();
+        const movesString = moves.join(',');
+        const move = execFileSync(enginePath, [movesString, fen || '']).toString().trim();
         
         res.json({ move });
     } catch (error) {

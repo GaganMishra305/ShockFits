@@ -76,9 +76,11 @@ async function makeComputerMove() {
     thinking = true;
     updateStatus();
 
-    const moves = game.moves();
-    if (moves.length === 0) {
+    const verboseMoves = game.moves({ verbose: true });
+    const movesUci = verboseMoves.map(m => `${m.from}${m.to}${m.promotion ? m.promotion : ''}`);
+    if (movesUci.length === 0) {
         thinking = false;
+        updateStatus();
         return;
     }
 
@@ -86,30 +88,38 @@ async function makeComputerMove() {
         const res = await fetch('/api/move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ moves })
+            body: JSON.stringify({
+                fen: game.fen(),
+                moves: movesUci
+            })
         });
 
         const data = await res.json();
+        let chosen = data.move;
 
-        if (data.move && data.move.length === 4) {
-            const move = game.move({
-                from: data.move.substring(0, 2),
-                to: data.move.substring(2, 4),
-                promotion: 'q'
-            });
+        if (!chosen || !/^([a-h][1-8]){2}[qrbn]?$/i.test(chosen)) {
+            // Fallback: pick a random legal move locally
+            chosen = movesUci[Math.floor(Math.random() * movesUci.length)];
+        }
 
-            if (move) {
-                history.push(move);
-                board.position(game.fen());
-                updateUI();
-                await new Promise(r => setTimeout(r, 300));
-            }
+        const move = game.move({
+            from: chosen.substring(0, 2),
+            to: chosen.substring(2, 4),
+            promotion: chosen.substring(4, 5) || 'q'
+        });
+
+        if (move) {
+            history.push(move);
+            board.position(game.fen());
+            updateUI();
+            await new Promise(r => setTimeout(r, 300));
         }
     } catch (error) {
         console.error('Error:', error);
     }
 
     thinking = false;
+    updateStatus();
 }
 
 function updateUI() {

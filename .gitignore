@@ -1,1 +1,4 @@
 node_modules
+ 
+# ignoring the engine executable 
+engine
