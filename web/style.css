@@ -1,0 +1,185 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    overflow: hidden;
+}
+
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 30px;
+    padding-right: 30px;
+    max-width: 1000px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 2em;
+}
+
+.game-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+#status {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.game-modes {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 10px;
+    border: 2px solid #ddd;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.mode-btn:hover {
+    border-color: #667eea;
+}
+
+.mode-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.main-layout {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 30px;
+    align-items: start;
+}
+
+.board-section {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#board {
+    width: 500px;
+    height: 500px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+}
+
+.controls button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+#reset-btn {
+    background: #667eea;
+    color: white;
+}
+
+#reset-btn:hover {
+    background: #5568d3;
+}
+
+#undo-btn, #flip-btn {
+    background: #e0e0e0;
+    color: #333;
+}
+
+#undo-btn:hover, #flip-btn:hover {
+    background: #d0d0d0;
+}
+
+.moves-section {
+    background: #f5f5f5;
+    border-radius: 8px;
+    padding: 20px;
+    max-height: 535px;
+    overflow-y: auto;
+}
+
+.move-entry {
+    margin-bottom: 8px;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.move-number {
+    font-weight: 600;
+    color: #667eea;
+    margin-right: 8px;
+}
+
+@media (max-width: 900px) {
+    .main-layout {
+        grid-template-columns: 1fr;
+    }
+
+    #board {
+        width: 100%;
+        height: auto;
+    }
+
+    .moves-section {
+        max-height: 200px;
+    }
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 1.5em;
+    }
+
+    .game-modes {
+        flex-direction: column;
+    }
+
+    .controls {
+        flex-direction: column;
+    }
+}

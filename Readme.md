@@ -1,3 +1,5 @@
-# Chess Engine
+# ShockFits
+ChessEngine from scratch.
 
-Following: dev.to/zeyu2001/build-a-simple-chess-ai-in-javascript-18eg
+## References
+- https://dev.to/zeyu2001/build-a-simple-chess-ai-in-javascript-18eg

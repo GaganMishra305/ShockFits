@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShockFits</title>
+   
+    <link rel="stylesheet"
+      href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ShockFits</h1>
+        
+        <div class="game-info">
+            <div id="status">Select game mode to start</div>
+            <div>Moves: <span id="move-count">0</span></div>
+        </div>
+
+        <div class="game-modes">
+            <button id="hvh-btn" class="mode-btn active">Human vs Human</button>
+            <button id="hvc-btn" class="mode-btn">Human vs Computer</button>
+            <button id="cvc-btn" class="mode-btn">Computer vs Computer</button>
+        </div>
+
+        <div class="main-layout">
+            <div class="board-section">
+                <div id="board"></div>
+                <div class="controls">
+                    <button id="reset-btn">New Game</button>
+                    <button id="undo-btn">Undo</button>
+                    <button id="flip-btn">Flip Board</button>
+                </div>
+            </div>
+            <div id="moves-list" class="moves-section"></div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
