@@ -32,7 +32,8 @@ int main(int argc, char* argv[]) {
     }
 
     int index = rand() % moves.size();
-    std::cout << "urmom" << std::endl;
+    std::cout << moves[index] << std::endl;
+    std::cerr << "debug statements here" << std::endl;
 
     return 0;
 }
