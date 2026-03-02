@@ -18,6 +18,7 @@ app.post('/api/move', (req, res) => {
         const enginePath = path.join(__dirname, '../core/engine');
         const movesString = moves.join(',');
         const move = execFileSync(enginePath, [movesString, fen || '']).toString().trim();
+        console.log('Engine move:', move);
         
         res.json({ move });
     } catch (error) {

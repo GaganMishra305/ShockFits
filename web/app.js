@@ -3,6 +3,7 @@ let board = null;
 let mode = 'hvh';
 let thinking = false;
 let history = [];
+let cvcPaused = true;  // Start CvC as paused
 
 function pieceTheme (piece) {
   if (piece.search(/w/) !== -1) {
@@ -64,7 +65,7 @@ async function handleTurn() {
 
     if (mode === 'hvc' && game.turn() === 'b') {
         await makeComputerMove();
-    } else if (mode === 'cvc') {
+    } else if (mode === 'cvc' && !cvcPaused) {
         await makeComputerMove();
         if (!game.game_over()) {
             setTimeout(() => handleTurn(), 800);
@@ -170,6 +171,17 @@ function setMode(newMode) {
     mode = newMode;
     document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
     document.getElementById(newMode + '-btn').classList.add('active');
+    
+    // Show/hide CvC control button
+    const cvcBtn = document.getElementById('cvc-control-btn');
+    if (newMode === 'cvc') {
+        cvcBtn.classList.remove('hidden');
+        cvcPaused = true;
+        cvcBtn.textContent = 'Start Game';
+    } else {
+        cvcBtn.classList.add('hidden');
+    }
+    
     resetGame();
 }
 
@@ -177,11 +189,15 @@ function resetGame() {
     game.reset();
     board.start();
     history = [];
-    updateUI();
-
+    cvcPaused = true;
+    
+    // Reset CvC button if in that mode
+    const cvcBtn = document.getElementById('cvc-control-btn');
     if (mode === 'cvc') {
-        setTimeout(() => handleTurn(), 500);
+        cvcBtn.textContent = 'Start Game';
     }
+    
+    updateUI();
 }
 
 function undoMove() {
@@ -205,5 +221,19 @@ document.getElementById('cvc-btn').addEventListener('click', () => setMode('cvc'
 document.getElementById('reset-btn').addEventListener('click', resetGame);
 document.getElementById('undo-btn').addEventListener('click', undoMove);
 document.getElementById('flip-btn').addEventListener('click', () => board.flip());
+
+document.getElementById('cvc-control-btn').addEventListener('click', () => {
+    cvcPaused = !cvcPaused;
+    const btn = document.getElementById('cvc-control-btn');
+    
+    if (cvcPaused) {
+        btn.textContent = 'Resume Game';
+    } else {
+        btn.textContent = 'Pause Game';
+        handleTurn();
+    }
+    
+    updateStatus();
+});
 
 window.addEventListener('DOMContentLoaded', initBoard);

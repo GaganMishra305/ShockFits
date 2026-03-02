@@ -1,1 +1,0 @@
-/* before the backtracking algo ... choose and write a evaluation algo */

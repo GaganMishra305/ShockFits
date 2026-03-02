@@ -131,6 +131,19 @@ h1 {
     background: #d0d0d0;
 }
 
+#cvc-control-btn {
+    background: #4caf50;
+    color: white;
+}
+
+#cvc-control-btn:hover {
+    background: #45a049;
+}
+
+#cvc-control-btn.hidden {
+    display: none;
+}
+
 .moves-section {
     background: #f5f5f5;
     border-radius: 8px;
