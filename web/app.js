@@ -99,8 +99,7 @@ async function makeComputerMove() {
         let chosen = data.move;
 
         if (!chosen || !/^([a-h][1-8]){2}[qrbn]?$/i.test(chosen)) {
-            // Fallback: pick a random legal move locally
-            chosen = movesUci[Math.floor(Math.random() * movesUci.length)];
+            console.warn('Invalid move from engine');
         }
 
         const move = game.move({

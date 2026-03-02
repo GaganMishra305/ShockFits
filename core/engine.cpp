@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
     }
 
     int index = rand() % moves.size();
-    std::cout << moves[index] << std::endl;
+    std::cout << "urmom" << std::endl;
 
     return 0;
 }
