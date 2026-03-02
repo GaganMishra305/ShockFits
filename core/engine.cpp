@@ -19,8 +19,7 @@ void setPosition(const std::string& movesCsv, const std::string& fen) {
             currentMoves.push_back(move);
     }
 
-    std::cerr << "[ENGINE] Position set. Moves = "
-              << currentMoves.size() << std::endl;
+    std::cerr << "[ENGINE] Position set. Moves = " << currentMoves.size() << std::endl;
 }
 
 std::string computeMove() {
