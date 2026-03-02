@@ -3,37 +3,70 @@
 #include <vector>
 #include <cstdlib>
 #include <ctime>
+#include <sstream>
 
-int main(int argc, char* argv[]) {
+std::vector<std::string> currentMoves;
+std::string currentFen;
+
+void setPosition(const std::string& movesCsv, const std::string& fen) {
+    currentMoves.clear();
+    currentFen = fen;
+
+    std::stringstream ss(movesCsv);
+    std::string move;
+    while (std::getline(ss, move, ',')) {
+        if (!move.empty())
+            currentMoves.push_back(move);
+    }
+
+    std::cerr << "[ENGINE] Position set. Moves = "
+              << currentMoves.size() << std::endl;
+}
+
+std::string computeMove() {
+    if (currentMoves.empty()) return "";
+
+    int idx = rand() % currentMoves.size();
+    return currentMoves[idx];
+}
+
+int main() {
     srand(time(nullptr));
 
-    if (argc < 2) {
-        std::cerr << "Usage: engine <moves_csv> [fen]" << std::endl;
-        return 1;
-    }
+    std::string line;
 
-    std::string movesStr = argv[1];
-    std::string fen = (argc >= 3) ? argv[2] : "";
-    std::vector<std::string> moves;
+    std::cerr << "[ENGINE] Engine started" << std::endl;
 
-    size_t start = 0;
-    while (start < movesStr.size()) {
-        size_t end = movesStr.find(',', start);
-        if (end == std::string::npos) end = movesStr.size();
-        if (end > start) {
-            moves.push_back(movesStr.substr(start, end - start));
+    while (std::getline(std::cin, line)) {
+        if (line == "quit") {
+            std::cerr << "[ENGINE] Quitting" << std::endl;
+            break;
         }
-        start = end + 1;
-    }
 
-    if (moves.empty()) {
-        std::cerr << "No moves" << std::endl;
-        return 1;
-    }
+        if (line.rfind("position", 0) == 0) {
+            // position <moves_csv> <fen>
+            std::stringstream ss(line);
+            std::string cmd, movesCsv, fen;
 
-    int index = rand() % moves.size();
-    std::cout << moves[index] << std::endl;
-    std::cerr << "debug statements here" << std::endl;
+            ss >> cmd;
+            ss >> movesCsv;
+            std::getline(ss, fen);
+            if (!fen.empty() && fen[0] == ' ')
+                fen.erase(0, 1);
+
+            setPosition(movesCsv, fen);
+            continue;
+        }
+
+        if (line == "go") {
+            std::string bestMove = computeMove();
+            std::cout << bestMove << std::endl;
+            std::cout.flush();
+            continue;
+        }
+
+        std::cerr << "[ENGINE] Unknown command: " << line << std::endl;
+    }
 
     return 0;
 }
