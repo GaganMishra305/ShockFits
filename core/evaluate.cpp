@@ -80,15 +80,73 @@ unordered_map<string, vector<vector<int>>> pst_w = { // piece square table
 
 };
 unordered_map<string, vector<vector<int>>> pst_b;
+
 vector<vector<int>> reverse_pst(const vector<vector<int>>& pst) {
     return vector<vector<int>>(pst.rbegin(), pst.rend());
 }
 
-int main() {
-    // init()
+void initPST() {
     for (const auto& [piece, table] : pst_w) {
         pst_b[piece] = reverse_pst(table);
     }
+}
 
-    return 0;
+int evaluateBoard(const string& piece, const string& capturedPiece, int fromR, int fromC, 
+                  int toR, int toC, int prevSum, char color, bool isCapture, 
+                  bool isPromotion, const string& promotion) {
+    
+    if (prevSum < -1500) {
+        if (piece == "k" && color == 'w') {
+            return evaluateBoard("k_e", capturedPiece, fromR, fromC, toR, toC, 
+                                prevSum, color, isCapture, isPromotion, promotion);
+        }
+    }
+
+    auto& pst_self = (color == 'w') ? pst_w : pst_b;
+    auto& pst_opp = (color == 'w') ? pst_b : pst_w;
+
+    if (isCapture) {
+        prevSum += weights[capturedPiece] + pst_opp[capturedPiece][toR][toC];
+    }
+
+    if (isPromotion) {
+        prevSum -= weights[piece] + pst_self[piece][fromR][fromC];
+        prevSum += weights[promotion] + pst_self[promotion][toR][toC];
+    } else {
+        prevSum -= pst_self[piece][fromR][fromC];
+        prevSum += pst_self[piece][toR][toC];
+    }
+
+    return prevSum;
+}
+
+int evaluateFEN(const string& fen) {
+    int score = 0;
+    int row = 0;
+    int col = 0;
+    
+    for (char c : fen) {
+        if (c == ' ') break;
+        if (c == '/') {
+            row++;
+            col = 0;
+            continue;
+        }
+        
+        if (isdigit(c)) {
+            col += (c - '0');
+        } else {
+            string piece(1, tolower(c));
+            char color = isupper(c) ? 'w' : 'b';
+            auto& pst = (color == 'w') ? pst_w : pst_b;
+            
+            if (pst.count(piece)) {
+                score += weights[piece];
+                score += (color == 'w') ? pst[piece][row][col] : -pst[piece][row][col];
+            }
+            col++;
+        }
+    }
+    
+    return score;
 }

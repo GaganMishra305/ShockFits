@@ -4,6 +4,17 @@
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <unordered_map>
+
+extern std::unordered_map<std::string, int> weights;
+extern std::unordered_map<std::string, std::vector<std::vector<int>>> pst_w;
+extern std::unordered_map<std::string, std::vector<std::vector<int>>> pst_b;
+
+void initPST();
+int evaluateBoard(const std::string& piece, const std::string& capturedPiece, int fromR, int fromC, 
+                  int toR, int toC, int prevSum, char color, bool isCapture, 
+                  bool isPromotion, const std::string& promotion);
+int evaluateFEN(const std::string& fen);
 
 std::vector<std::string> currentMoves;
 std::string currentFen;
@@ -19,7 +30,8 @@ void setPosition(const std::string& movesCsv, const std::string& fen) {
             currentMoves.push_back(move);
     }
 
-    std::cerr << "[ENGINE] Position set. Moves = " << currentMoves.size() << std::endl;
+    int score = evaluateFEN(fen);
+    std::cerr << "[ENGINE] Position set. Moves = " << currentMoves.size() << ", Score = " << score << std::endl;
 }
 
 std::string computeMove() {
@@ -31,6 +43,7 @@ std::string computeMove() {
 
 int main() {
     srand(time(nullptr));
+    initPST();
 
     std::string line;
 
