@@ -1,4 +1,33 @@
-node_modules
- 
-# ignoring the engine executable 
+# Build artifacts
+build/
+cmake-build-*/
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.exe
+
+# Compiled engine binaries (never commit binaries)
 engine
+core/engine
+core/shockfits
+bin/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Env / secrets
+.env
+*.local
+
+# Tournament / benchmark output
+*.pgn
+results/
+logs/
