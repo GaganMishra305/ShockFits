@@ -118,6 +118,13 @@ the chessboard piece art, the general client architecture.
   `core/{include,src,tests}`, zero-dependency test harness, perft reference
   table seeded, portability fix (`bits/stdc++.h` removed), Linux binary
   untracked, `.gitignore` hardened. Build + tests green on macOS/clang.
+- **Phase 1 — DONE:** bitboard core (`types`, `bitboard`, `board`, `movegen`,
+  `perft`). LERF board, precomputed leaper attacks, ray-walked sliders, FEN
+  I/O, make/unmake with undo stack, legal move generation (pseudo-legal +
+  legality filter incl. castling transit checks & en passant). **Perft passes
+  exactly** for startpos(d5), Kiwipete, and positions 3/4/5. Engine binary now
+  generates its OWN legal moves (chess.js no longer needed for move logic) and
+  has a `perft` debug command (~57M nps, ray-walk sliders).
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
