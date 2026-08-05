@@ -9,6 +9,10 @@
 # to SHOCKFITS_LIB_SOURCES below and main() moves to src/main.cpp.
 
 set(SHOCKFITS_LIB_SOURCES
+    src/bitboard.cpp
+    src/board.cpp
+    src/movegen.cpp
+    src/perft.cpp
     src/evaluate.cpp
 )
 
