@@ -26,6 +26,7 @@ struct StateInfo {
     Square ep_square;
     int halfmove_clock;
     Piece captured;  // piece removed by this move (NO_PIECE_TYPE if none)
+    std::uint64_t key;  // zobrist key before the move (restored on unmake)
 };
 
 class Board {
@@ -54,6 +55,7 @@ class Board {
 
     Piece piece_on(Square s) const { return mailbox_[s]; }
     Square king_square(Color c) const { return lsb(bb_[c][KING]); }
+    std::uint64_t key() const { return key_; }
 
     // Is square `s` attacked by any piece of color `by` (given occupancy)?
     bool is_square_attacked(Square s, Color by) const;
@@ -73,6 +75,7 @@ class Board {
     Square ep_ = SQ_NONE;
     int halfmove_clock_ = 0;
     int fullmove_number_ = 1;
+    std::uint64_t key_ = 0;
 
     std::vector<StateInfo> history_;
 };

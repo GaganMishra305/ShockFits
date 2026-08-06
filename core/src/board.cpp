@@ -3,6 +3,8 @@
 #include <cctype>
 #include <sstream>
 
+#include "shockfits/zobrist.hpp"
+
 namespace shockfits {
 
 namespace {
@@ -50,6 +52,7 @@ void Board::put_piece(Color c, PieceType pt, Square s) {
     bb_[c][pt] |= b;
     occ_[c] |= b;
     mailbox_[s] = Piece{c, pt};
+    key_ ^= zobrist::psq[c][pt][s];
 }
 
 void Board::remove_piece(Square s) {
@@ -58,6 +61,7 @@ void Board::remove_piece(Square s) {
     bb_[p.color][p.type] &= ~b;
     occ_[p.color] &= ~b;
     mailbox_[s] = Piece{};
+    key_ ^= zobrist::psq[p.color][p.type][s];
 }
 
 void Board::move_piece(Square from, Square to) {
@@ -67,6 +71,8 @@ void Board::move_piece(Square from, Square to) {
     occ_[p.color] ^= fromto;
     mailbox_[from] = Piece{};
     mailbox_[to] = p;
+    key_ ^= zobrist::psq[p.color][p.type][from] ^
+            zobrist::psq[p.color][p.type][to];
 }
 
 // ---- FEN --------------------------------------------------------------------
@@ -82,6 +88,7 @@ bool Board::set_fen(const std::string& fen) {
     ep_ = SQ_NONE;
     halfmove_clock_ = 0;
     fullmove_number_ = 1;
+    key_ = 0;
     history_.clear();
 
     std::istringstream ss(fen);
@@ -123,6 +130,12 @@ bool Board::set_fen(const std::string& fen) {
     }
     halfmove_clock_ = hm;
     fullmove_number_ = fm;
+
+    // Finalize the zobrist key: piece placement was accumulated by put_piece;
+    // now fold in castling, en passant, and side to move.
+    key_ ^= zobrist::castling[castling_ & ANY_CASTLING];
+    if (ep_ != SQ_NONE) key_ ^= zobrist::ep_file[file_of(ep_)];
+    if (stm_ == BLACK) key_ ^= zobrist::side;
     return true;
 }
 
@@ -182,7 +195,12 @@ void Board::make_move(Move m) {
     Color us = stm_;
     Color them = ~us;
 
-    StateInfo st{castling_, ep_, halfmove_clock_, Piece{}};
+    StateInfo st{castling_, ep_, halfmove_clock_, Piece{}, key_};
+
+    // Fold OUT the old en-passant and castling contributions; we fold the new
+    // ones back in after the mutations. (side flips unconditionally below.)
+    if (ep_ != SQ_NONE) key_ ^= zobrist::ep_file[file_of(ep_)];
+    key_ ^= zobrist::castling[castling_ & ANY_CASTLING];
 
     // Determine captured piece (en passant is special: victim is behind `to`).
     Square capture_sq = to;
@@ -223,6 +241,11 @@ void Board::make_move(Move m) {
     // Castling rights: clear bits touched by from/to squares.
     castling_ &= kCastling.mask[from];
     castling_ &= kCastling.mask[to];
+
+    // Fold the NEW en-passant / castling contributions back into the key.
+    if (ep_ != SQ_NONE) key_ ^= zobrist::ep_file[file_of(ep_)];
+    key_ ^= zobrist::castling[castling_ & ANY_CASTLING];
+    key_ ^= zobrist::side;  // side to move flips
 
     // Halfmove clock: reset on pawn move or capture.
     if (moving.type == PAWN || !st.captured.is_none()) {
@@ -276,6 +299,7 @@ void Board::unmake_move(Move m) {
     castling_ = st.castling;
     ep_ = st.ep_square;
     halfmove_clock_ = st.halfmove_clock;
+    key_ = st.key;
     if (us == BLACK) --fullmove_number_;
 }
 
