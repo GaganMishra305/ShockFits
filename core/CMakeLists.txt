@@ -17,6 +17,7 @@ set(SHOCKFITS_LIB_SOURCES
     src/eval.cpp
     src/tt.cpp
     src/search.cpp
+    src/uci.cpp
 )
 
 add_library(shockfits_core ${SHOCKFITS_LIB_SOURCES})
