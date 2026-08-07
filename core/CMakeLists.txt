@@ -13,7 +13,10 @@ set(SHOCKFITS_LIB_SOURCES
     src/board.cpp
     src/movegen.cpp
     src/perft.cpp
-    src/evaluate.cpp
+    src/zobrist.cpp
+    src/eval.cpp
+    src/tt.cpp
+    src/search.cpp
 )
 
 add_library(shockfits_core ${SHOCKFITS_LIB_SOURCES})
