@@ -125,6 +125,15 @@ the chessboard piece art, the general client architecture.
   exactly** for startpos(d5), Kiwipete, and positions 3/4/5. Engine binary now
   generates its OWN legal moves (chess.js no longer needed for move logic) and
   has a `perft` debug command (~57M nps, ray-walk sliders).
+- **Phase 2 — DONE:** the engine now THINKS. Tapered PeSTO evaluation
+  (`eval`), Zobrist hashing (`zobrist`, incrementally maintained + verified),
+  transposition table (`tt`, depth-preferred, bucketed by power-of-two mask),
+  and search (`search`): iterative-deepening negamax + alpha-beta + quiescence
+  + check extensions + move ordering (TT move, MVV-LVA, killers, history).
+  Engine driver runs real search (`go` / `go depth N` / `go movetime N`, plus
+  `eval`). Plays Nf3 from startpos, solves mate-in-1, grabs hanging material;
+  ~7M nps full-width search. 13/13 tests green (perft + zobrist + eval +
+  tactics).
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
