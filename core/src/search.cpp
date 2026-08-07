@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <iostream>
+#include <string>
+#include <vector>
 
 #include "shockfits/eval.hpp"
 #include "shockfits/movegen.hpp"
@@ -32,8 +35,33 @@ int score_from_tt(int score, int ply) {
 
 }  // namespace
 
-bool Searcher::time_up() {
-    if (max_nodes_ && nodes_ >= max_nodes_) return true;
+std::string Searcher::pv_string(Board& b, int max_len) {
+    std::string pv;
+    std::vector<Move> played;
+    for (int i = 0; i < max_len; ++i) {
+        const TTEntry* e = tt_.probe(b.key());
+        if (!e || e->move == kNullMove) break;
+
+        // Verify the TT move is legal in this position (guards against
+        // key collisions producing garbage moves).
+        MoveList legal;
+        generate_legal(b, legal);
+        bool ok = false;
+        for (Move m : legal)
+            if (m == e->move) { ok = true; break; }
+        if (!ok) break;
+
+        if (!pv.empty()) pv += ' ';
+        pv += e->move.to_uci();
+        b.make_move(e->move);
+        played.push_back(e->move);
+    }
+    for (auto it = played.rbegin(); it != played.rend(); ++it)
+        b.unmake_move(*it);
+    return pv;
+}
+
+bool Searcher::time_up() {    if (max_nodes_ && nodes_ >= max_nodes_) return true;
     if (movetime_ms_ <= 0) return false;
     auto now = std::chrono::steady_clock::now();
     auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start_)
@@ -218,10 +246,27 @@ SearchResult Searcher::search(Board& b, const SearchLimits& limits,
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - start_)
                           .count();
-            std::printf("info depth %d score cp %d nodes %llu time %lld pv %s\n",
-                        depth, score, (unsigned long long)nodes_,
-                        (long long)ms, result.best.to_uci().c_str());
-            std::fflush(stdout);
+            std::uint64_t nps =
+                ms > 0 ? (nodes_ * 1000ULL / (std::uint64_t)ms) : nodes_;
+            std::string pv = pv_string(b, depth);
+            if (pv.empty()) pv = result.best.to_uci();
+
+            // Report mate scores as "mate N" (moves), else centipawns.
+            char score_buf[32];
+            if (score >= kValueMateInMaxPly) {
+                std::snprintf(score_buf, sizeof(score_buf), "mate %d",
+                              (kValueMate - score + 1) / 2);
+            } else if (score <= -kValueMateInMaxPly) {
+                std::snprintf(score_buf, sizeof(score_buf), "mate %d",
+                              -(kValueMate + score + 1) / 2);
+            } else {
+                std::snprintf(score_buf, sizeof(score_buf), "cp %d", score);
+            }
+
+            std::cout << "info depth " << depth << " score " << score_buf
+                      << " nodes " << nodes_ << " nps " << nps << " time "
+                      << ms << " pv " << pv << "\n";
+            std::cout.flush();
         }
 
         // Stop early on a proven mate.

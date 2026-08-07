@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <string>
 
 #include "shockfits/board.hpp"
 #include "shockfits/tt.hpp"
@@ -39,6 +40,10 @@ class Searcher {
    private:
     int negamax(Board& b, int depth, int alpha, int beta, int ply);
     int quiescence(Board& b, int alpha, int beta, int ply);
+
+    // Walk the transposition table from the current position to build a
+    // principal variation string (space-separated UCI moves).
+    std::string pv_string(Board& b, int max_len);
 
     bool time_up();
 
