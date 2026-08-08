@@ -5,6 +5,7 @@ add_executable(shockfits_tests
     sanity_test.cpp
     perft_test.cpp
     tactic_test.cpp
+    uci_test.cpp
 )
 target_link_libraries(shockfits_tests PRIVATE shockfits_core)
 

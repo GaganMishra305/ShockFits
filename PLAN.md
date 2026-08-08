@@ -134,6 +134,15 @@ the chessboard piece art, the general client architecture.
   `eval`). Plays Nf3 from startpos, solves mate-in-1, grabs hanging material;
   ~7M nps full-width search. 13/13 tests green (perft + zobrist + eval +
   tactics).
+- **Phase 3 — DONE:** ShockFits is now a real, pluggable **UCI engine**
+  (`uci` module). Full handshake (`uci`/`isready`/`ucinewgame`), `setoption`
+  (Hash, Threads-stored-for-P4), `position startpos|fen ... moves ...`, and
+  `go` with depth/nodes/movetime/wtime+btime+inc+movestogo/infinite (+ simple
+  time budgeting). Search emits proper `info` lines (mate scores as `mate N`,
+  nps, TT-walked PV) and `bestmove`; unified all engine output through
+  std::cout. `web/server.js` rewritten to drive the engine over UCI. 20/20
+  tests green (added 7 UCI protocol tests). Ready to face Stockfish + run in
+  cutechess-cli.
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
