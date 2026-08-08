@@ -2,7 +2,13 @@
 
 // Transposition table: caches search results keyed by Zobrist hash so we don't
 // re-search positions reached by different move orders (transpositions).
+//
+// Thread-safe via Hyatt's lockless XOR scheme: each slot stores {key ^ data,
+// data}. A concurrent torn write is detected on probe because (stored_key ^
+// data) will no longer equal the real key. Uses relaxed atomics (defined
+// behavior; benign races only).
 
+#include <atomic>
 #include <cstdint>
 #include <vector>
 
@@ -17,11 +23,12 @@ enum Bound : std::uint8_t {
     BOUND_EXACT = 3
 };
 
-struct TTEntry {
-    std::uint64_t key = 0;
-    std::int32_t score = 0;
+// Result of a probe (a value copy, since the slot may change under us).
+struct TTData {
+    bool hit = false;
     Move move = kNullMove;
-    std::int16_t depth = -1;
+    int score = 0;
+    int depth = -1;
     Bound bound = BOUND_NONE;
 };
 
@@ -32,18 +39,19 @@ class TranspositionTable {
     void resize(std::size_t mb);
     void clear();
 
-    // Probe: returns pointer to a matching entry (same key) or nullptr.
-    const TTEntry* probe(std::uint64_t key) const {
-        const TTEntry& e = table_[index(key)];
-        return e.key == key ? &e : nullptr;
-    }
-
+    TTData probe(std::uint64_t key) const;
     void store(std::uint64_t key, int score, Bound bound, int depth, Move move);
 
    private:
+    struct Slot {
+        std::atomic<std::uint64_t> key{0};   // real_key ^ data
+        std::atomic<std::uint64_t> data{0};  // packed payload
+    };
+
+    static std::uint64_t pack(Move m, int score, int depth, Bound b);
     std::size_t index(std::uint64_t key) const { return key & mask_; }
 
-    std::vector<TTEntry> table_;
+    std::vector<Slot> table_;
     std::size_t mask_ = 0;
 };
 
