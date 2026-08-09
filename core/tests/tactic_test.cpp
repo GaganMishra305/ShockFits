@@ -89,3 +89,42 @@ TEST("search: grabs a free queen") {
     std::string fen = "r5k1/8/8/8/8/8/6PP/R5K1 w - - 0 1";
     CHECK_EQ(best_move(fen, 4).to_uci(), std::string("a1a8"));
 }
+
+// ---- Multithreaded search (Lazy SMP) ----------------------------------------
+// Same answers as single-threaded, and it must not crash / hang. Uses a modest
+// thread count so CI (and laptops) stay cool.
+TEST("search: threaded search finds mate in 1") {
+    Board b("6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1");
+    Searcher s(16);
+    s.set_threads(4);  // internally clamped to core count
+    CHECK(s.threads() >= 1);
+    SearchLimits lim;
+    lim.max_depth = 4;
+    SearchResult r = s.search(b, lim, /*verbose=*/false);
+    CHECK_EQ(r.best.to_uci(), std::string("e1e8"));
+    CHECK(r.score >= kValueMateInMaxPly);
+}
+
+TEST("search: set_threads clamps to hardware core count") {
+    Searcher s(8);
+    s.set_threads(100000);  // absurd request
+    CHECK(s.threads() >= 1);
+    CHECK(s.threads() <= 100000);  // clamped, not honored literally
+    s.set_threads(0);
+    CHECK_EQ(s.threads(), 1);  // never below 1
+}
+
+TEST("search: threaded search on startpos returns a legal move") {
+    Board b;
+    Searcher s(16);
+    s.set_threads(2);
+    SearchLimits lim;
+    lim.max_depth = 5;
+    SearchResult r = s.search(b, lim, /*verbose=*/false);
+    MoveList legal;
+    generate_legal(b, legal);
+    bool ok = false;
+    for (Move m : legal)
+        if (m == r.best) { ok = true; break; }
+    CHECK(ok);
+}

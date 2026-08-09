@@ -143,6 +143,15 @@ the chessboard piece art, the general client architecture.
   std::cout. `web/server.js` rewritten to drive the engine over UCI. 20/20
   tests green (added 7 UCI protocol tests). Ready to face Stockfish + run in
   cutechess-cli.
+- **Phase 4 — DONE:** multithreading via **Lazy SMP** (safe by design). N
+  worker threads each run their own iterative-deepening search on a private
+  board, sharing one **lockless transposition table** (Hyatt XOR scheme, relaxed
+  atomics — no locks, no UB). Safety rails: threads default to **1**, opt-in via
+  UCI `Threads`, hard-capped to the machine's core count; the main worker
+  dictates termination so helpers can never outlive it. Search now runs on a
+  **background thread** so `stop`/`quit` interrupt `go infinite` cleanly (proven:
+  stop-after-1s = 1.0s real). ~4× node throughput at 4 threads on M4 Pro. 23/23
+  tests green (added 3 threaded-search tests).
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.

@@ -19,6 +19,7 @@ std::string run_uci(const std::vector<std::string>& cmds) {
 
     Uci uci;
     for (const auto& c : cmds) uci.handle(c);
+    uci.wait();  // let any async "go" search finish before capturing output
 
     std::cout.rdbuf(old);
     return captured.str();
