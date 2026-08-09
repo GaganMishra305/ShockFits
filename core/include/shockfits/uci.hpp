@@ -8,6 +8,7 @@
 // Reference: http://wbec-ridderkerk.nl/html/UCIProtocol.html
 
 #include <string>
+#include <thread>
 
 #include "shockfits/board.hpp"
 #include "shockfits/search.hpp"
@@ -17,6 +18,7 @@ namespace shockfits {
 class Uci {
    public:
     Uci();
+    ~Uci();
 
     // Blocking loop: reads UCI commands from stdin until "quit".
     void loop();
@@ -24,6 +26,9 @@ class Uci {
     // Handle a single command line (exposed for testing).
     // Returns false when the engine should quit.
     bool handle(const std::string& line);
+
+    // Block until any in-flight search finishes naturally (test helper).
+    void wait();
 
    private:
     void cmd_uci();
@@ -37,8 +42,12 @@ class Uci {
     // board, or kNullMove if it isn't legal.
     Move parse_move(const std::string& uci) const;
 
+    // Join any in-flight search thread (after requesting it to stop).
+    void stop_search();
+
     Board board_;
     Searcher searcher_;
+    std::thread search_thread_;
     std::size_t hash_mb_ = 64;
     int threads_ = 1;  // stored now; used in Phase 4 (Lazy SMP)
 };

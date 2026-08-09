@@ -14,6 +14,12 @@ namespace shockfits {
 
 Uci::Uci() : searcher_(64) {}  // 64 MB default TT (matches hash_mb_ default)
 
+Uci::~Uci() { stop_search(); }  // never leave a search thread dangling
+
+void Uci::wait() {
+    if (search_thread_.joinable()) search_thread_.join();  // no stop request
+}
+
 Move Uci::parse_move(const std::string& uci) const {
     Board copy = board_;
     MoveList legal;
@@ -38,6 +44,7 @@ void Uci::cmd_isready() {
 }
 
 void Uci::cmd_newgame() {
+    stop_search();
     searcher_.new_game();
     board_.set_startpos();
 }
@@ -59,7 +66,7 @@ void Uci::cmd_setoption(const std::string& args) {
         searcher_.set_tt_size(hash_mb_);
     } else if (name == "Threads") {
         threads_ = std::max(1, std::stoi(value));
-        // Applied in Phase 4 (Lazy SMP).
+        searcher_.set_threads(threads_);  // internally capped to core count
     }
 }
 
@@ -94,6 +101,10 @@ void Uci::cmd_position(const std::string& args) {
 }
 
 void Uci::cmd_go(const std::string& args) {
+    // A search may still be running (e.g. "go infinite"); stop and join it first
+    // so we never spawn overlapping searches (which would double-book cores).
+    stop_search();
+
     std::istringstream ss(args);
     std::string tok;
 
@@ -129,10 +140,20 @@ void Uci::cmd_go(const std::string& args) {
     }
     // else: depth/nodes/infinite -> no time cap (infinite runs to max_depth).
 
-    SearchResult r = searcher_.search(board_, limits, /*verbose=*/true);
-    std::cout << "bestmove " << (r.best.is_null() ? "0000" : r.best.to_uci())
-              << "\n";
-    std::cout.flush();
+    // Run the search on a background thread so "stop"/"quit" can interrupt it.
+    // Copy the board into the searcher's thread via a snapshot.
+    Board snapshot = board_;
+    search_thread_ = std::thread([this, snapshot, limits]() mutable {
+        SearchResult r = searcher_.search(snapshot, limits, /*verbose=*/true);
+        std::cout << "bestmove "
+                  << (r.best.is_null() ? "0000" : r.best.to_uci()) << "\n";
+        std::cout.flush();
+    });
+}
+
+void Uci::stop_search() {
+    searcher_.request_stop();
+    if (search_thread_.joinable()) search_thread_.join();
 }
 
 bool Uci::handle(const std::string& line) {
@@ -149,14 +170,14 @@ bool Uci::handle(const std::string& line) {
     else if (cmd == "setoption") cmd_setoption(rest);
     else if (cmd == "position") cmd_position(rest);
     else if (cmd == "go") cmd_go(rest);
-    else if (cmd == "stop") { /* single-threaded: search already returned */ }
+    else if (cmd == "stop") stop_search();
     else if (cmd == "eval") std::cout << "eval cp " << evaluate(board_) << "\n";
     else if (cmd == "perft") {
         int depth = rest.empty() ? 1 : std::stoi(rest);
         std::cout << "nodes " << perft(board_, depth) << "\n";
     }
     else if (cmd == "d") std::cout << board_.fen() << "\n";
-    else if (cmd == "quit") return false;
+    else if (cmd == "quit") { stop_search(); return false; }
     // Unknown commands are silently ignored, per UCI convention.
     std::cout.flush();
     return true;
