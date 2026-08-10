@@ -1,0 +1,11 @@
+# ShockFits arena harness dependencies.
+# Install into a uv venv from the repo root:
+#   uv venv
+#   uv pip install -r tools/requirements.txt \
+#     --index-url https://pypi.ci.artifacts.walmart.com/artifactory/api/pypi/external-pypi/simple \
+#     --allow-insecure-host pypi.ci.artifacts.walmart.com
+#
+# Only the tournament harness needs this; the engine and bot registry are
+# dependency-free. python-chess is used purely as the match referee (move
+# legality, draw/mate adjudication, PGN, UCI engine driver).
+python-chess==1.11.2
