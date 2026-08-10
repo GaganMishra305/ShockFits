@@ -1,0 +1,14 @@
+{
+  "description": "ShockFits, fixed depth 6, single thread. The middleweight.",
+  "engine": "core/engine",
+  "limits": {
+    "depth": 6
+  },
+  "name": "shockfits-d6",
+  "options": {
+    "Hash": 64,
+    "Threads": 1
+  },
+  "protocol": "uci",
+  "version": "0.1.0"
+}

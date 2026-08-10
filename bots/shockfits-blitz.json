@@ -1,0 +1,14 @@
+{
+  "description": "ShockFits, 100ms per move, single thread. Blitz specialist.",
+  "engine": "core/engine",
+  "limits": {
+    "movetime": 100
+  },
+  "name": "shockfits-blitz",
+  "options": {
+    "Hash": 64,
+    "Threads": 1
+  },
+  "protocol": "uci",
+  "version": "0.1.0"
+}

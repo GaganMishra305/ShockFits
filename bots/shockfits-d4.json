@@ -1,0 +1,14 @@
+{
+  "description": "ShockFits, fixed depth 4, single thread. The featherweight.",
+  "engine": "core/engine",
+  "limits": {
+    "depth": 4
+  },
+  "name": "shockfits-d4",
+  "options": {
+    "Hash": 64,
+    "Threads": 1
+  },
+  "protocol": "uci",
+  "version": "0.1.0"
+}
