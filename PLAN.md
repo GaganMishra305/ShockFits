@@ -152,6 +152,12 @@ the chessboard piece art, the general client architecture.
   **background thread** so `stop`/`quit` interrupt `go infinite` cleanly (proven:
   stop-after-1s = 1.0s real). ~4× node throughput at 4 threads on M4 Pro. 23/23
   tests green (added 3 threaded-search tests).
+- **Phase 5 — DONE:** **bot registry** (`tools/arena`). A bot = engine binary +
+  UCI options + one search limit (movetime/depth/nodes), stored as committed
+  JSON manifests in `bots/`. Stdlib-only CLI: `list`, `show`, `validate`, and
+  `snapshot` (freezes the current binary into `bin/` and records the git commit
+  for reproducibility). Seed roster is a strength ladder: `shockfits-d4/d6/d8`
+  + `shockfits-blitz`. 11 Python tests green; committed roster validates.
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
