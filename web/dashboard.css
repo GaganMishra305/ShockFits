@@ -1,0 +1,91 @@
+/* Dashboard-specific styles, layered on top of style.css */
+
+.container.wide { max-width: 1200px; }
+
+.dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+.dash-header h1 { margin: 0; }
+
+.dash-nav a {
+    text-decoration: none;
+    color: #667eea;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 6px;
+    margin-left: 6px;
+}
+.dash-nav a.active,
+.dash-nav a:hover { background: #667eea; color: #fff; }
+
+.muted { color: #666; font-size: 0.9em; }
+.tag {
+    font-size: 0.5em;
+    vertical-align: middle;
+    background: #eef0ff;
+    color: #4b56c0;
+    padding: 3px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+}
+.card h2 { color: #333; margin-bottom: 16px; }
+.card h3 { color: #444; margin: 14px 0 8px; font-size: 1em; }
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: start;
+}
+@media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.chart-box { position: relative; height: 280px; }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+.data-table th, .data-table td {
+    padding: 8px 10px; text-align: left; border-bottom: 1px solid #eee;
+}
+.data-table th { color: #4b56c0; font-weight: 700; }
+.data-table tr:hover td { background: #f7f8ff; }
+.rank-1 td:first-child { font-weight: 800; color: #b8860b; }
+
+.scroll-x { overflow-x: auto; }
+
+.stat-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.stat {
+    flex: 1; min-width: 120px; background: #f5f6ff;
+    border-radius: 10px; padding: 14px; text-align: center;
+}
+.stat .val { font-size: 1.8em; font-weight: 800; color: #4b56c0; }
+.stat .lbl { font-size: 0.8em; color: #666; text-transform: uppercase; letter-spacing: 0.04em; }
+
+#sprt-box {
+    padding: 14px; border-radius: 10px; font-weight: 600; margin-bottom: 8px;
+}
+.sprt-h1 { background: #e5f7ea; color: #1b7a3d; }
+.sprt-h0 { background: #fdecec; color: #b02a37; }
+.sprt-cont { background: #fff6e5; color: #9a6b00; }
+
+.games-list { list-style: none; max-height: 220px; overflow-y: auto; font-size: 0.88em; }
+.games-list li { padding: 5px 0; border-bottom: 1px solid #f0f0f0; }
+.res-w { color: #1b7a3d; font-weight: 700; }
+.res-l { color: #b02a37; font-weight: 700; }
+.res-d { color: #9a6b00; font-weight: 700; }
+
+.empty { padding: 16px; background: #fafafa; border-radius: 8px; color: #666; }
+.empty code {
+    display: block; margin-top: 8px; background: #2d2d3a; color: #e6e6f0;
+    padding: 8px 10px; border-radius: 6px; font-size: 0.9em;
+}
+.hidden { display: none; }
