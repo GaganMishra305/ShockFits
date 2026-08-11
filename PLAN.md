@@ -158,6 +158,16 @@ the chessboard piece art, the general client architecture.
   `snapshot` (freezes the current binary into `bin/` and records the git commit
   for reproducibility). Seed roster is a strength ladder: `shockfits-d4/d6/d8`
   + `shockfits-blitz`. 11 Python tests green; committed roster validates.
+- **Phase 6 — DONE:** **Bots Royale + Stockfish Gauntlet** live. Installed
+  Stockfish 18 (brew). cutechess not in brew, so built a homegrown UCI match
+  runner using `python-chess` as the referee (legality, draw/mate adjudication,
+  PGN) — engine stays pure C++. `tools/arena`: `match` (opening book, per-game
+  play), `rating` (Elo + 95% margin + SPRT/LLR), `tournament` (round-robin
+  royale w/ crosstable; gauntlet w/ SPRT). CLI: `royale`, `gauntlet`. Results
+  written to `web/data/*.json` (+ PGN). **Web dashboard** (`web/dashboard.html`
+  + Chart.js): standings, Elo bars, crosstable, gauntlet W/D/L doughnut + SPRT
+  verdict + recent games. Demo: ShockFits-blitz beat Stockfish(skill0,20ms)
+  4-0 (SPRT H1 accepted); royale strength ladder validated blitz > d6 > d4.
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
