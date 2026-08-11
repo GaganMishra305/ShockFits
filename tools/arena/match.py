@@ -7,7 +7,7 @@ The engines themselves stay pure C++ / external binaries.
 from __future__ import annotations
 
 import datetime as _dt
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 import chess
@@ -61,6 +61,9 @@ class GameResult:
     termination: str     # e.g. "checkmate", "stalemate", "fifty moves"
     plies: int
     pgn: str
+    moves_uci: List[str] = field(default_factory=list)  # for board replay
+    moves_san: List[str] = field(default_factory=list)  # for the move list
+    fens: List[str] = field(default_factory=list)        # position after each ply
 
     def score_for(self, name: str) -> float:
         """Points (1 / 0.5 / 0) scored by `name` in this game."""
@@ -90,12 +93,22 @@ def play_game(white: Bot, black: Bot,
     game.headers["Date"] = _dt.date.today().strftime("%Y.%m.%d")
     node = game
 
+    moves_uci: List[str] = []
+    moves_san: List[str] = []
+    fens: List[str] = []
+
+    def record(mv: chess.Move) -> None:
+        moves_san.append(board.san(mv))  # SAN must be taken BEFORE pushing
+        moves_uci.append(mv.uci())
+
     try:
         # Play forced opening moves (if legal).
         for uci in (opening or []):
             mv = chess.Move.from_uci(uci)
             if mv in board.legal_moves:
+                record(mv)
                 board.push(mv)
+                fens.append(board.fen())
                 node = node.add_variation(mv)
 
         while not board.is_game_over(claim_draw=True) and board.ply() < max_plies:
@@ -104,7 +117,9 @@ def play_game(white: Bot, black: Bot,
             play = eng.play(board, limit)
             if play.move is None:
                 break
+            record(play.move)
             board.push(play.move)
+            fens.append(board.fen())
             node = node.add_variation(play.move)
     finally:
         if own_white:
@@ -121,4 +136,4 @@ def play_game(white: Bot, black: Bot,
 
     game.headers["Result"] = result
     return GameResult(white.name, black.name, result, termination,
-                      board.ply(), str(game))
+                      board.ply(), str(game), moves_uci, moves_san, fens)
