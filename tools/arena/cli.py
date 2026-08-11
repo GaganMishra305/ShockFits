@@ -20,8 +20,13 @@ import stat
 import subprocess
 import sys
 from pathlib import Path
+from typing import Optional
 
 from . import bots as reg
+from . import tournament
+
+# Generated tournament output goes here (served by the web dashboard).
+DATA_DIR = reg.REPO_ROOT / "web" / "data"
 
 
 def _git_commit() -> str:
@@ -114,6 +119,66 @@ def _cmd_snapshot(args: argparse.Namespace) -> int:
     return 0
 
 
+def _stockfish_bot(skill: int, movetime: Optional[int], depth: Optional[int],
+                   path: Optional[str]) -> reg.Bot:
+    sf = path or shutil.which("stockfish") or "/opt/homebrew/bin/stockfish"
+    if not Path(sf).is_file():
+        raise SystemExit(f"error: stockfish not found at {sf} (brew install stockfish)")
+    limits = {"movetime": movetime} if movetime else {"depth": depth or 1}
+    return reg.Bot(
+        name=f"stockfish-skill{skill}",
+        engine=sf,
+        description=f"Stockfish (Skill Level {skill})",
+        options={"Skill Level": skill},
+        limits=limits,
+    )
+
+
+def _cmd_royale(args: argparse.Namespace) -> int:
+    roster = reg.load_registry()
+    if args.bots:
+        wanted = set(args.bots)
+        roster = [b for b in roster if b.name in wanted]
+    roster = [b for b in roster if b.engine_exists()]
+    if len(roster) < 2:
+        print("error: need >= 2 built bots for a royale", file=sys.stderr)
+        return 1
+    print(f"Bots Royale: {len(roster)} bots, {args.games} games/pair")
+    results = tournament.royale(roster, games_per_pair=args.games,
+                                max_plies=args.max_plies)
+    path = tournament.save_results(results, DATA_DIR, "royale")
+    print(f"\nStandings:")
+    for s in results["standings"]:
+        print(f"  {s['rank']}. {s['name']:<20} {s['points']:.1f} pts "
+              f"({s['wins']}-{s['draws']}-{s['losses']})  "
+              f"Elo {s['elo']:+.0f} +/- {s['elo_margin']:.0f}")
+    print(f"\nwrote {path.relative_to(reg.REPO_ROOT)} (open web dashboard to view)")
+    return 0
+
+
+def _cmd_gauntlet(args: argparse.Namespace) -> int:
+    challenger = reg.get_bot(args.challenger)
+    if challenger is None or not challenger.engine_exists():
+        print(f"error: challenger {args.challenger!r} not found / not built",
+              file=sys.stderr)
+        return 1
+    opponent = _stockfish_bot(args.skill, args.sf_movetime, args.sf_depth,
+                              args.stockfish)
+    print(f"Gauntlet: {challenger.name} vs {opponent.name}, {args.games} games")
+    results = tournament.gauntlet(challenger, opponent, games=args.games,
+                                  elo0=args.elo0, elo1=args.elo1,
+                                  max_plies=args.max_plies)
+    path = tournament.save_results(results, DATA_DIR, "gauntlet")
+    print(f"\nResult ({challenger.name} POV): "
+          f"+{results['wins']} ={results['draws']} -{results['losses']}  "
+          f"score {results['score_rate']*100:.1f}%")
+    print(f"Elo: {results['elo']:+.1f} +/- {results['elo_margin']:.1f}")
+    print(f"SPRT: {results['sprt']['verdict']} "
+          f"(LLR {results['sprt']['llr']:.2f})")
+    print(f"\nwrote {path.relative_to(reg.REPO_ROOT)} (open web dashboard to view)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="arena", description="ShockFits bot registry")
     sub = p.add_subparsers(dest="command", required=True)
@@ -140,6 +205,24 @@ def build_parser() -> argparse.ArgumentParser:
     grp.add_argument("--depth", type=int, help="fixed search depth (ply)")
     grp.add_argument("--nodes", type=int, help="fixed node budget")
     pn.set_defaults(fn=_cmd_snapshot)
+
+    pr = sub.add_parser("royale", help="round-robin among registered bots")
+    pr.add_argument("--games", type=int, default=4, help="games per pair")
+    pr.add_argument("--bots", nargs="*", help="restrict to these bot names")
+    pr.add_argument("--max-plies", type=int, default=400)
+    pr.set_defaults(fn=_cmd_royale)
+
+    pg = sub.add_parser("gauntlet", help="a bot vs Stockfish (Elo + SPRT)")
+    pg.add_argument("challenger", help="a registered bot name")
+    pg.add_argument("--games", type=int, default=20)
+    pg.add_argument("--skill", type=int, default=0, help="Stockfish Skill Level 0-20")
+    pg.add_argument("--sf-movetime", type=int, help="Stockfish ms/move")
+    pg.add_argument("--sf-depth", type=int, help="Stockfish fixed depth")
+    pg.add_argument("--stockfish", help="path to stockfish binary")
+    pg.add_argument("--elo0", type=float, default=0.0, help="SPRT H0 Elo")
+    pg.add_argument("--elo1", type=float, default=50.0, help="SPRT H1 Elo")
+    pg.add_argument("--max-plies", type=int, default=400)
+    pg.set_defaults(fn=_cmd_gauntlet)
 
     return p
 
