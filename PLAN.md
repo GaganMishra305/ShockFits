@@ -88,12 +88,18 @@ the chessboard piece art, the general client architecture.
 - Parallelize matches across cores (this is where threads shine at the harness level too).
 
 ## Phase 7 — Web UI overhaul
-**Outcome:** the UI you described.
-- Fix backend concurrency: **per-game engine process pool** (no more shared singleton).
-- **Play** tab: pick a bot version, human vs bot, live eval bar, PGN move list.
-- **Bots Royale** dashboard: live standings, crosstable, Elo chart (Chart.js).
-- **Stockfish Gauntlet** dashboard: run N games, live win/draw/loss + Elo curve.
-- Analysis niceties: eval bar, best-move arrows, PGN import/export.
+**Outcome:** the UI you described (revised: an interactive arena, not a dashboard).
+- Browser **arena**: pick two fighters (ShockFits bots or Stockfish skill levels),
+  run a game on demand, and **replay it move-by-move** on a board.
+- Node server spawns the Python match runner per request; game returns as JSON
+  (SAN + FENs) for replay.
+- (Dropped the analytics dashboard per owner request.)
+
+## Phase 9 — README showcase (owner request, deferred)
+**Outcome:** a repo front page that flexes.
+- Header line: **"Current bot level: XXXX Elo"** (needs a calibrated gauntlet ladder
+  vs increasing Stockfish strength to find the real ceiling).
+- Embed a screenshot or short video of a bot-vs-bot replay from the arena.
 
 ## Phase 8 — Polish, CI & docs
 **Outcome:** trustworthy and maintainable.
@@ -168,6 +174,15 @@ the chessboard piece art, the general client architecture.
   + Chart.js): standings, Elo bars, crosstable, gauntlet W/D/L doughnut + SPRT
   verdict + recent games. Demo: ShockFits-blitz beat Stockfish(skill0,20ms)
   4-0 (SPRT H1 accepted); royale strength ladder validated blitz > d6 > d4.
+- **Phase 7 — DONE:** interactive browser **arena** (owner asked for run+replay,
+  not a dashboard — dashboard removed). `web/arena.html` lets you pick two
+  fighters (ShockFits bots or Stockfish skill levels), run a game on demand, and
+  replay it move-by-move (first/prev/next/last + autoplay, clickable move list,
+  result banner). Node endpoints: `GET /api/bots`, `POST /api/arena/run` (spawns
+  the Python `play_one` runner). `match.py` now records SAN/UCI/FEN per ply for
+  replay. Verified end-to-end: blitz beat Stockfish-skill3 in-browser.
+- **Phase 9 (deferred, owner idea):** README header "Current bot level: XXXX
+  Elo" (needs a calibration ladder) + an embedded replay screenshot/video.
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
