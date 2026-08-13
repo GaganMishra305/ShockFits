@@ -4,6 +4,31 @@ let mode = 'hvh';
 let thinking = false;
 let history = [];
 let cvcPaused = true;  // Start CvC as paused
+let selectedBot = null;
+
+async function loadBots() {
+    try {
+        const res = await fetch('/api/bots');
+        const data = await res.json();
+        const sel = document.getElementById('bot-select');
+        const addGroup = (label, list) => {
+            const og = document.createElement('optgroup');
+            og.label = label;
+            list.forEach(b => {
+                const o = document.createElement('option');
+                o.value = b.name; o.textContent = b.name;
+                og.appendChild(o);
+            });
+            sel.appendChild(og);
+        };
+        addGroup('ShockFits bots', data.bots || []);
+        addGroup('Stockfish', data.stockfish || []);
+        selectedBot = sel.value;
+        sel.addEventListener('change', () => { selectedBot = sel.value; });
+    } catch (e) {
+        console.error('could not load bots', e);
+    }
+}
 
 function pieceTheme (piece) {
   if (piece.search(/w/) !== -1) {
@@ -86,12 +111,12 @@ async function makeComputerMove() {
     }
 
     try {
-        const res = await fetch('/api/move', {
+        const res = await fetch('/api/bot-move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 fen: game.fen(),
-                moves: movesUci
+                bot: selectedBot
             })
         });
 
@@ -235,4 +260,4 @@ document.getElementById('cvc-control-btn').addEventListener('click', () => {
     updateStatus();
 });
 
-window.addEventListener('DOMContentLoaded', initBoard);
+window.addEventListener('DOMContentLoaded', () => { initBoard(); loadBots(); });

@@ -79,6 +79,26 @@ h1 {
     border-color: #667eea;
 }
 
+.opponent-picker {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.opponent-picker label {
+    font-size: 0.85em;
+    color: #666;
+    font-weight: 600;
+}
+.opponent-picker select {
+    flex: 1;
+    padding: 8px 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9em;
+    background: #fff;
+}
+
 .main-layout {
     display: grid;
     grid-template-columns: auto 1fr;
