@@ -114,6 +114,68 @@ app.post('/api/arena/run', (req, res) => {
     });
 });
 
+// ---- Arena: LIVE stream a game (Server-Sent Events) -----------------------
+app.get('/api/arena/stream', (req, res) => {
+    const { white, black } = req.query;
+    const opening = parseInt(req.query.opening, 10) || 0;
+    if (!white || !black) {
+        return res.status(400).json({ error: 'white and black are required' });
+    }
+
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+    });
+    res.write('retry: 10000\n\n');
+
+    const args = ['-m', 'tools.arena.play_one', '--stream',
+        '--white', String(white), '--black', String(black),
+        '--opening', String(opening)];
+    const proc = spawn(PYTHON, args, { cwd: REPO_ROOT });
+
+    let buf = '';
+    proc.stdout.on('data', (d) => {
+        buf += d.toString();
+        let idx;
+        while ((idx = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, idx).trim();
+            buf = buf.slice(idx + 1);
+            if (line) res.write(`data: ${line}\n\n`);
+        }
+    });
+    proc.stderr.on('data', (d) => console.error('[STREAM]', d.toString().trim()));
+    proc.on('close', () => {
+        res.write('event: done\ndata: {}\n\n');
+        res.end();
+    });
+
+    // Kill the game if the browser disconnects (no zombie engines).
+    req.on('close', () => { if (!proc.killed) proc.kill(); });
+});
+
+// ---- Play: get a chosen bot's move for a position -------------------------
+app.post('/api/bot-move', (req, res) => {
+    const { fen, bot } = req.body || {};
+    if (!fen || !bot) {
+        return res.status(400).json({ error: 'fen and bot are required' });
+    }
+    const args = ['-m', 'tools.arena.bot_move', '--bot', String(bot),
+        '--fen', String(fen)];
+    const proc = spawn(PYTHON, args, { cwd: REPO_ROOT });
+    let out = '', err = '';
+    proc.stdout.on('data', (d) => (out += d.toString()));
+    proc.stderr.on('data', (d) => (err += d.toString()));
+    proc.on('close', (code) => {
+        if (code !== 0) {
+            console.error('[BOT-MOVE]', err.trim());
+            return res.status(500).json({ error: err.trim() || 'bot-move failed' });
+        }
+        try { res.json(JSON.parse(out)); }
+        catch (e) { res.status(500).json({ error: 'bad bot output' }); }
+    });
+});
+
 process.on('SIGINT', () => {
     send('quit');
     engine.kill();
