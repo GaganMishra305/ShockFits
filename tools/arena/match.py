@@ -77,9 +77,13 @@ def play_game(white: Bot, black: Bot,
               opening: Optional[List[str]] = None,
               max_plies: int = 400,
               white_eng: Optional[chess.engine.SimpleEngine] = None,
-              black_eng: Optional[chess.engine.SimpleEngine] = None) -> GameResult:
+              black_eng: Optional[chess.engine.SimpleEngine] = None,
+              on_move=None) -> GameResult:
     """Play one game. If engine handles are passed in they are reused (faster
-    for tournaments); otherwise fresh processes are spawned and closed."""
+    for tournaments); otherwise fresh processes are spawned and closed.
+
+    ``on_move(ply, san, uci, fen)`` is called after every move, enabling live
+    streaming of a game as it progresses."""
     own_white = white_eng is None
     own_black = black_eng is None
     we = white_eng or open_engine(white)
@@ -91,15 +95,23 @@ def play_game(white: Bot, black: Bot,
     game.headers["White"] = white.name
     game.headers["Black"] = black.name
     game.headers["Date"] = _dt.date.today().strftime("%Y.%m.%d")
-    node = game
 
     moves_uci: List[str] = []
     moves_san: List[str] = []
     fens: List[str] = []
 
     def record(mv: chess.Move) -> None:
-        moves_san.append(board.san(mv))  # SAN must be taken BEFORE pushing
+        san = board.san(mv)  # SAN must be taken BEFORE pushing
+        moves_san.append(san)
         moves_uci.append(mv.uci())
+        board.push(mv)
+        fen = board.fen()
+        fens.append(fen)
+        node_ref[0] = node_ref[0].add_variation(mv)
+        if on_move is not None:
+            on_move(len(moves_uci), san, mv.uci(), fen)
+
+    node_ref = [game]  # mutable cell so the nested record() can advance it
 
     try:
         # Play forced opening moves (if legal).
@@ -107,9 +119,6 @@ def play_game(white: Bot, black: Bot,
             mv = chess.Move.from_uci(uci)
             if mv in board.legal_moves:
                 record(mv)
-                board.push(mv)
-                fens.append(board.fen())
-                node = node.add_variation(mv)
 
         while not board.is_game_over(claim_draw=True) and board.ply() < max_plies:
             eng = we if board.turn == chess.WHITE else be
@@ -118,9 +127,6 @@ def play_game(white: Bot, black: Bot,
             if play.move is None:
                 break
             record(play.move)
-            board.push(play.move)
-            fens.append(board.fen())
-            node = node.add_variation(play.move)
     finally:
         if own_white:
             we.quit()

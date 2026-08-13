@@ -53,13 +53,38 @@ def main(argv=None) -> int:
     p.add_argument("--sf-movetime", type=int, default=50,
                    help="ms/move for stockfish pseudo-bots")
     p.add_argument("--max-plies", type=int, default=400)
+    p.add_argument("--stream", action="store_true",
+                   help="emit one JSON line per move as the game progresses")
     args = p.parse_args(argv)
 
     white = resolve_fighter(args.white, args.sf_movetime)
     black = resolve_fighter(args.black, args.sf_movetime)
     opening = OPENING_BOOK[args.opening % len(OPENING_BOOK)]
 
-    r = play_game(white, black, opening=opening, max_plies=args.max_plies)
+    on_move = None
+    if args.stream:
+        # Announce the pairing first so the UI can render names immediately.
+        json.dump({"type": "start", "white": white.name, "black": black.name},
+                  sys.stdout)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+        def on_move(ply, san, uci, fen):  # noqa: E306
+            json.dump({"type": "move", "ply": ply, "san": san,
+                       "uci": uci, "fen": fen}, sys.stdout)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+
+    r = play_game(white, black, opening=opening, max_plies=args.max_plies,
+                  on_move=on_move)
+
+    if args.stream:
+        json.dump({"type": "end", "white": r.white, "black": r.black,
+                   "result": r.result, "termination": r.termination,
+                   "plies": r.plies}, sys.stdout)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        return 0
 
     out = {
         "white": r.white,

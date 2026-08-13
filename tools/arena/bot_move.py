@@ -1,0 +1,51 @@
+"""Return a single bot's chosen move for a given position (JSON on stdout).
+
+Used by the web 'Play' page so a human can face any fighter (a registered bot
+or a ``stockfish-skill<N>`` pseudo-bot).
+
+    python3 -m tools.arena.bot_move --bot shockfits-d6 --fen "<FEN>"
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+
+import chess
+
+from .match import bot_to_limit, open_engine
+from .play_one import resolve_fighter
+
+
+def main(argv=None) -> int:
+    p = argparse.ArgumentParser(prog="bot_move")
+    p.add_argument("--bot", required=True)
+    p.add_argument("--fen", required=True)
+    p.add_argument("--sf-movetime", type=int, default=200)
+    args = p.parse_args(argv)
+
+    bot = resolve_fighter(args.bot, args.sf_movetime)
+    try:
+        board = chess.Board(args.fen)
+    except ValueError as exc:
+        json.dump({"error": f"bad FEN: {exc}"}, sys.stdout)
+        return 1
+
+    if board.is_game_over(claim_draw=True):
+        json.dump({"move": None, "game_over": True}, sys.stdout)
+        return 0
+
+    eng = open_engine(bot)
+    try:
+        play = eng.play(board, bot_to_limit(bot))
+    finally:
+        eng.quit()
+
+    move = play.move.uci() if play.move else None
+    json.dump({"move": move, "bot": bot.name}, sys.stdout)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
