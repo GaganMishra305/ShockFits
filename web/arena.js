@@ -58,38 +58,66 @@ function setStatus(msg, isError) {
     el.classList.toggle('error', !!isError);
 }
 
+let evtSource = null;
+let liveFollow = false;   // auto-jump to the newest move while a game streams
+
 async function runGame() {
     stopAuto();
+    if (evtSource) { evtSource.close(); evtSource = null; }
+
     const white = document.getElementById('white-select').value;
     const black = document.getElementById('black-select').value;
     const opening = parseInt(document.getElementById('opening-select').value, 10);
     const btn = document.getElementById('run-btn');
 
     btn.disabled = true;
-    setStatus(`Running ${white} vs ${black}... (engines are thinking)`);
     document.getElementById('result-banner').classList.add('hidden');
+    game = { white, black, result: null, termination: null,
+             moves_san: [], moves_uci: [], fens: [] };
+    ply = 0;
+    liveFollow = true;
+    renderMatchup();
+    renderMoves();
+    board.start();
+    document.getElementById('ply-indicator').textContent = '0 / 0';
+    setStatus(`Live: ${white} vs ${black}... (watching moves as they happen)`);
 
-    try {
-        const res = await fetch('/api/arena/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ white, black, opening }),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'game failed');
+    const url = `/api/arena/stream?white=${encodeURIComponent(white)}` +
+                `&black=${encodeURIComponent(black)}&opening=${opening}`;
+    evtSource = new EventSource(url);
 
-        game = data;
-        ply = 0;
-        renderMatchup();
-        renderMoves();
-        renderBanner();
-        goToPly(0);
-        setStatus(`Done: ${data.result} (${data.termination}, ${data.plies} plies). Use the controls to replay.`);
-    } catch (e) {
-        setStatus('Error: ' + e.message, true);
-    } finally {
+    evtSource.onmessage = (e) => {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch (_) { return; }
+
+        if (msg.type === 'start') {
+            game.white = msg.white; game.black = msg.black;
+            renderMatchup();
+        } else if (msg.type === 'move') {
+            game.moves_san.push(msg.san);
+            game.moves_uci.push(msg.uci);
+            game.fens.push(msg.fen);
+            renderMoves();
+            if (liveFollow) goToPly(game.fens.length);  // auto-follow newest
+            else document.getElementById('ply-indicator').textContent =
+                `${ply} / ${game.fens.length}`;
+        } else if (msg.type === 'end') {
+            game.result = msg.result;
+            game.termination = msg.termination;
+            renderBanner();
+            setStatus(`Done: ${msg.result} (${msg.termination}, ${msg.plies} plies). Scrub the controls to replay.`);
+        }
+    };
+
+    evtSource.addEventListener('done', () => {
+        if (evtSource) { evtSource.close(); evtSource = null; }
         btn.disabled = false;
-    }
+    });
+    evtSource.onerror = () => {
+        if (evtSource) { evtSource.close(); evtSource = null; }
+        btn.disabled = false;
+        if (!game.result) setStatus('Stream ended unexpectedly.', true);
+    };
 }
 
 function renderMatchup() {
@@ -133,7 +161,7 @@ function moveSpan(idx) {
     s.className = 'm';
     s.dataset.ply = idx + 1;  // this move produces position at ply idx+1
     s.textContent = game.moves_san[idx];
-    s.onclick = () => goToPly(idx + 1);
+    s.onclick = () => { liveFollow = false; stopAuto(); goToPly(idx + 1); };
     return s;
 }
 
@@ -173,9 +201,9 @@ window.addEventListener('DOMContentLoaded', () => {
     initBoard();
     loadFighters();
     document.getElementById('run-btn').onclick = runGame;
-    document.getElementById('first-btn').onclick = () => { stopAuto(); goToPly(0); };
-    document.getElementById('prev-btn').onclick = () => { stopAuto(); goToPly(ply - 1); };
-    document.getElementById('next-btn').onclick = () => { stopAuto(); goToPly(ply + 1); };
-    document.getElementById('last-btn').onclick = () => { stopAuto(); goToPly(game ? game.fens.length : 0); };
-    document.getElementById('play-btn').onclick = toggleAuto;
+    document.getElementById('first-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(0); };
+    document.getElementById('prev-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(ply - 1); };
+    document.getElementById('next-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(ply + 1); };
+    document.getElementById('last-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(game ? game.fens.length : 0); };
+    document.getElementById('play-btn').onclick = () => { liveFollow = false; toggleAuto(); };
 });
