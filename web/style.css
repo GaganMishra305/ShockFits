@@ -99,6 +99,55 @@ h1 {
     background: #fff;
 }
 
+.side-pickers {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.side-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 150px;
+}
+.side-pick label {
+    font-size: 0.78em;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+}
+.side-pick select {
+    padding: 8px 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.9em;
+    background: #fff;
+}
+#start-btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: #667eea;
+    color: #fff;
+    font-weight: 700;
+}
+#start-btn:hover { background: #5568d3; }
+
+#pause-btn { background: #fb8c00; color: #fff; }
+#pause-btn:hover { background: #ef7f00; }
+#pause-btn.hidden { display: none; }
+
+.move-entry .mt {
+    color: #999;
+    font-size: 0.82em;
+    font-variant-numeric: tabular-nums;
+}
+
 .main-layout {
     display: grid;
     grid-template-columns: auto 1fr;

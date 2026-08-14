@@ -1,17 +1,41 @@
+// ShockFits Play page: White and Black can each be a Human or any bot.
+// Shows per-move thinking time; supports bot-vs-bot with pause/resume.
+
 let game = new Chess();
 let board = null;
-let mode = 'hvh';
+let history = [];      // chess.js move objects
+let times = [];        // think time (ms) per ply, parallel to history
+let players = { w: 'human', b: 'human' };
 let thinking = false;
-let history = [];
-let cvcPaused = true;  // Start CvC as paused
-let selectedBot = null;
+let paused = false;
+let started = false;
+
+function pieceTheme(piece) { return 'img/wikipedia/' + piece + '.png'; }
+
+function initBoard() {
+    board = Chessboard('board', {
+        pieceTheme: pieceTheme,
+        draggable: true,
+        position: 'start',
+        onDragStart, onDrop, onSnapEnd,
+    });
+    updateUI();
+}
 
 async function loadBots() {
+    let bots = [], stockfish = [];
     try {
-        const res = await fetch('/api/bots');
-        const data = await res.json();
-        const sel = document.getElementById('bot-select');
-        const addGroup = (label, list) => {
+        const data = await (await fetch('/api/bots')).json();
+        bots = data.bots || []; stockfish = data.stockfish || [];
+    } catch (e) { console.error('could not load bots', e); }
+
+    for (const which of ['white-player', 'black-player']) {
+        const sel = document.getElementById(which);
+        sel.innerHTML = '';
+        const human = document.createElement('option');
+        human.value = 'human'; human.textContent = 'Human';
+        sel.appendChild(human);
+        const grp = (label, list) => {
             const og = document.createElement('optgroup');
             og.label = label;
             list.forEach(b => {
@@ -21,130 +45,109 @@ async function loadBots() {
             });
             sel.appendChild(og);
         };
-        addGroup('ShockFits bots', data.bots || []);
-        addGroup('Stockfish', data.stockfish || []);
-        selectedBot = sel.value;
-        sel.addEventListener('change', () => { selectedBot = sel.value; });
-    } catch (e) {
-        console.error('could not load bots', e);
+        grp('ShockFits bots', bots);
+        grp('Stockfish', stockfish);
     }
+    // Default: Human (White) vs first ShockFits bot (Black).
+    if (bots[0]) document.getElementById('black-player').value = bots[0].name;
 }
 
-function pieceTheme (piece) {
-  if (piece.search(/w/) !== -1) {
-    return 'img/wikipedia/' + piece + '.png'
-  }
-  return 'img/wikipedia/' + piece + '.png'
+function isBot(color) { return players[color] !== 'human'; }
+function turnColor() { return game.turn(); }  // 'w' | 'b'
+
+function startGame() {
+    players.w = document.getElementById('white-player').value;
+    players.b = document.getElementById('black-player').value;
+    started = true;
+    paused = false;
+
+    // Show pause control only for bot-vs-bot.
+    const pauseBtn = document.getElementById('pause-btn');
+    pauseBtn.classList.toggle('hidden', !(isBot('w') && isBot('b')));
+    pauseBtn.textContent = 'Pause';
+
+    resetGame(true);
+    scheduleTurn();
 }
 
-function initBoard() {
-    const config = {
-        pieceTheme: pieceTheme,
-        draggable: true,
-        position: 'start',
-        onDragStart: onDragStart,
-        onDrop: onDrop,
-        onSnapEnd: onSnapEnd
-    };
-
-    board = Chessboard('board', config);
+function resetGame(keepStarted) {
+    game.reset();
+    board.start();
+    history = [];
+    times = [];
+    thinking = false;
+    if (!keepStarted) started = false;
     updateUI();
 }
 
 function onDragStart(source, piece) {
-    if (thinking || game.game_over()) return false;
-    if (mode === 'cvc') return false;
-    if (mode === 'hvc' && game.turn() === 'b') return false;
-    if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
-        (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
-        return false;
-    }
+    if (!started || thinking || game.game_over()) return false;
+    const t = turnColor();
+    if (isBot(t)) return false;                       // bot's turn, no dragging
+    if ((t === 'w' && piece.search(/^b/) !== -1) ||
+        (t === 'b' && piece.search(/^w/) !== -1)) return false;
 }
 
 function onDrop(source, target) {
-    const move = game.move({
-        from: source,
-        to: target,
-        promotion: 'q'
-    });
-
+    const move = game.move({ from: source, to: target, promotion: 'q' });
     if (move === null) return 'snapback';
-
     history.push(move);
+    times.push(null);  // human move: no engine time
     updateUI();
-    
-    setTimeout(() => handleTurn(), 100);
+    setTimeout(scheduleTurn, 100);
 }
 
-function onSnapEnd() {
-    board.position(game.fen());
-}
+function onSnapEnd() { board.position(game.fen()); }
 
-async function handleTurn() {
-    if (game.game_over()) {
-        updateStatus();
-        return;
-    }
-
-    if (mode === 'hvh') return;
-
-    if (mode === 'hvc' && game.turn() === 'b') {
-        await makeComputerMove();
-    } else if (mode === 'cvc' && !cvcPaused) {
-        await makeComputerMove();
-        if (!game.game_over()) {
-            setTimeout(() => handleTurn(), 800);
-        }
+function scheduleTurn() {
+    if (!started || game.game_over()) { updateStatus(); return; }
+    const t = turnColor();
+    if (isBot(t) && !paused) {
+        setTimeout(makeBotMove, 250);
+    } else {
+        updateStatus();  // waiting for human (or paused)
     }
 }
 
-async function makeComputerMove() {
+async function makeBotMove() {
+    if (!started || game.game_over() || paused) return;
+    const t = turnColor();
+    const bot = players[t];
     thinking = true;
     updateStatus();
-
-    const verboseMoves = game.moves({ verbose: true });
-    const movesUci = verboseMoves.map(m => `${m.from}${m.to}${m.promotion ? m.promotion : ''}`);
-    if (movesUci.length === 0) {
-        thinking = false;
-        updateStatus();
-        return;
-    }
 
     try {
         const res = await fetch('/api/bot-move', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                fen: game.fen(),
-                bot: selectedBot
-            })
+            body: JSON.stringify({ fen: game.fen(), bot }),
         });
-
         const data = await res.json();
-        let chosen = data.move;
+        thinking = false;
 
-        if (!chosen || !/^([a-h][1-8]){2}[qrbn]?$/i.test(chosen)) {
-            console.warn('Invalid move from engine');
-        }
-
+        if (!data.move) { updateStatus(); return; }
         const move = game.move({
-            from: chosen.substring(0, 2),
-            to: chosen.substring(2, 4),
-            promotion: chosen.substring(4, 5) || 'q'
+            from: data.move.substring(0, 2),
+            to: data.move.substring(2, 4),
+            promotion: data.move.substring(4, 5) || 'q',
         });
-
         if (move) {
             history.push(move);
+            times.push(typeof data.ms === 'number' ? data.ms : null);
             board.position(game.fen());
             updateUI();
-            await new Promise(r => setTimeout(r, 300));
+            setTimeout(scheduleTurn, 200);  // continue (bot-vs-bot loops here)
         }
-    } catch (error) {
-        console.error('Error:', error);
+    } catch (e) {
+        thinking = false;
+        console.error(e);
+        updateStatus();
     }
+}
 
-    thinking = false;
-    updateStatus();
+function fmtMs(ms) {
+    if (ms == null) return '';
+    return ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : ms + 'ms';
 }
 
 function updateUI() {
@@ -154,110 +157,76 @@ function updateUI() {
 }
 
 function updateStatus() {
-    let status = '';
+    const t = turnColor();
+    const who = (c) => isBot(c) ? players[c] : 'Human';
+    let status;
 
-    if (thinking) {
-        status = 'Computer thinking...';
+    if (!started) {
+        status = 'Pick players and press Start.';
     } else if (game.in_checkmate()) {
-        status = (game.turn() === 'w' ? 'Black' : 'White') + ' wins by checkmate';
+        const winner = t === 'w' ? 'Black' : 'White';
+        status = `Checkmate — ${winner} (${who(t === 'w' ? 'b' : 'w')}) wins`;
+    } else if (game.in_stalemate()) {
+        status = 'Stalemate — draw';
     } else if (game.in_draw()) {
         status = 'Draw';
-    } else if (game.in_stalemate()) {
-        status = 'Stalemate';
-    } else if (game.in_check()) {
-        status = (game.turn() === 'w' ? 'White' : 'Black') + ' is in check';
+    } else if (thinking) {
+        const lastLbl = who(t);
+        status = `${lastLbl} (${t === 'w' ? 'White' : 'Black'}) is thinking...`;
     } else {
-        status = (game.turn() === 'w' ? 'White' : 'Black') + "'s turn";
+        // Show last move's think time if available.
+        const lastMs = times.length ? times[times.length - 1] : null;
+        const tail = lastMs != null ? `  (last move: ${fmtMs(lastMs)})` : '';
+        status = `${who(t)} to move (${t === 'w' ? 'White' : 'Black'})${tail}`;
+        if (paused) status = 'Paused. ' + status;
     }
-
     document.getElementById('status').textContent = status;
 }
 
 function updateMovesList() {
     const list = document.getElementById('moves-list');
     list.innerHTML = '';
-
     for (let i = 0; i < history.length; i += 2) {
         const moveNum = Math.floor(i / 2) + 1;
-        const white = history[i].san;
-        const black = history[i + 1] ? history[i + 1].san : '';
-
+        const w = history[i], b = history[i + 1];
+        const wt = fmtMs(times[i]), bt = fmtMs(times[i + 1]);
         const div = document.createElement('div');
         div.className = 'move-entry';
-        div.innerHTML = `<span class="move-number">${moveNum}.</span>${white}${black ? ' ' + black : ''}`;
+        div.innerHTML =
+            `<span class="move-number">${moveNum}.</span>` +
+            `${w.san}${wt ? ` <span class="mt">${wt}</span>` : ''}` +
+            (b ? `  ${b.san}${bt ? ` <span class="mt">${bt}</span>` : ''}` : '');
         list.appendChild(div);
     }
-
     list.scrollTop = list.scrollHeight;
-}
-
-function setMode(newMode) {
-    mode = newMode;
-    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(newMode + '-btn').classList.add('active');
-    
-    // Show/hide CvC control button
-    const cvcBtn = document.getElementById('cvc-control-btn');
-    if (newMode === 'cvc') {
-        cvcBtn.classList.remove('hidden');
-        cvcPaused = true;
-        cvcBtn.textContent = 'Start Game';
-    } else {
-        cvcBtn.classList.add('hidden');
-    }
-    
-    resetGame();
-}
-
-function resetGame() {
-    game.reset();
-    board.start();
-    history = [];
-    cvcPaused = true;
-    
-    // Reset CvC button if in that mode
-    const cvcBtn = document.getElementById('cvc-control-btn');
-    if (mode === 'cvc') {
-        cvcBtn.textContent = 'Start Game';
-    }
-    
-    updateUI();
 }
 
 function undoMove() {
     if (history.length === 0) return;
-
-    game.undo();
-    history.pop();
-
-    if (mode === 'hvc' && history.length > 0) {
-        game.undo();
-        history.pop();
+    game.undo(); history.pop(); times.pop();
+    // If a human is playing against a bot, undo the bot's reply too so it's
+    // the human's move again.
+    const t = turnColor();
+    if (isBot(t) && history.length > 0) {
+        game.undo(); history.pop(); times.pop();
     }
-
     board.position(game.fen());
     updateUI();
 }
 
-document.getElementById('hvh-btn').addEventListener('click', () => setMode('hvh'));
-document.getElementById('hvc-btn').addEventListener('click', () => setMode('hvc'));
-document.getElementById('cvc-btn').addEventListener('click', () => setMode('cvc'));
-document.getElementById('reset-btn').addEventListener('click', resetGame);
-document.getElementById('undo-btn').addEventListener('click', undoMove);
-document.getElementById('flip-btn').addEventListener('click', () => board.flip());
+function togglePause() {
+    paused = !paused;
+    document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
+    if (!paused) scheduleTurn();
+    else updateStatus();
+}
 
-document.getElementById('cvc-control-btn').addEventListener('click', () => {
-    cvcPaused = !cvcPaused;
-    const btn = document.getElementById('cvc-control-btn');
-    
-    if (cvcPaused) {
-        btn.textContent = 'Resume Game';
-    } else {
-        btn.textContent = 'Pause Game';
-        handleTurn();
-    }
-    
-    updateStatus();
+window.addEventListener('DOMContentLoaded', () => {
+    initBoard();
+    loadBots();
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    document.getElementById('reset-btn').addEventListener('click', () => resetGame(false));
+    document.getElementById('undo-btn').addEventListener('click', undoMove);
+    document.getElementById('flip-btn').addEventListener('click', () => board.flip());
+    document.getElementById('pause-btn').addEventListener('click', togglePause);
 });
-
-window.addEventListener('DOMContentLoaded', () => { initBoard(); loadBots(); });

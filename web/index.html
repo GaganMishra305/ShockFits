@@ -17,19 +17,20 @@
         </p>
         
         <div class="game-info">
-            <div id="status">Select game mode to start</div>
+            <div id="status">Pick players and press Start.</div>
             <div>Moves: <span id="move-count">0</span></div>
         </div>
 
-        <div class="game-modes">
-            <button id="hvh-btn" class="mode-btn active">Human vs Human</button>
-            <button id="hvc-btn" class="mode-btn">Human vs Computer</button>
-            <button id="cvc-btn" class="mode-btn">Computer vs Computer</button>
-        </div>
-
-        <div class="opponent-picker" id="opponent-picker">
-            <label for="bot-select">Computer opponent:</label>
-            <select id="bot-select"></select>
+        <div class="side-pickers">
+            <div class="side-pick">
+                <label for="white-player">White</label>
+                <select id="white-player"></select>
+            </div>
+            <div class="side-pick">
+                <label for="black-player">Black</label>
+                <select id="black-player"></select>
+            </div>
+            <button id="start-btn">Start</button>
         </div>
 
         <div class="main-layout">
@@ -37,9 +38,9 @@
                 <div id="board"></div>
                 <div class="controls">
                     <button id="reset-btn">New Game</button>
+                    <button id="pause-btn" class="hidden">Pause</button>
                     <button id="undo-btn">Undo</button>
                     <button id="flip-btn">Flip Board</button>
-                    <button id="cvc-control-btn" class="hidden">Start Game</button>
                 </div>
             </div>
             <div id="moves-list" class="moves-section"></div>
