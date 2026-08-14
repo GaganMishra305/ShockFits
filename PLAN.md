@@ -181,6 +181,11 @@ the chessboard piece art, the general client architecture.
   result banner). Node endpoints: `GET /api/bots`, `POST /api/arena/run` (spawns
   the Python `play_one` runner). `match.py` now records SAN/UCI/FEN per ply for
   replay. Verified end-to-end: blitz beat Stockfish-skill3 in-browser.
+  **Update (live):** bot-vs-bot now **streams live** via Server-Sent Events
+  (`GET /api/arena/stream` -> `play_one --stream`, one JSON line per move);
+  board auto-follows the newest move and you can scrub back any time. The Play
+  page gained a **bot picker** (any ShockFits config or Stockfish skill level)
+  wired to `POST /api/bot-move` (`bot_move.py`), so a human can face any bot.
 - **Phase 9 (deferred, owner idea):** README header "Current bot level: XXXX
   Elo" (needs a calibration ladder) + an embedded replay screenshot/video.
 
