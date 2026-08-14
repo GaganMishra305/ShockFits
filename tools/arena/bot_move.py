@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 
 import chess
 
@@ -38,12 +39,14 @@ def main(argv=None) -> int:
 
     eng = open_engine(bot)
     try:
+        t0 = time.perf_counter()
         play = eng.play(board, bot_to_limit(bot))
+        ms = int((time.perf_counter() - t0) * 1000)
     finally:
         eng.quit()
 
     move = play.move.uci() if play.move else None
-    json.dump({"move": move, "bot": bot.name}, sys.stdout)
+    json.dump({"move": move, "bot": bot.name, "ms": ms}, sys.stdout)
     return 0
 
 

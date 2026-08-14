@@ -69,9 +69,9 @@ def main(argv=None) -> int:
         sys.stdout.write("\n")
         sys.stdout.flush()
 
-        def on_move(ply, san, uci, fen):  # noqa: E306
+        def on_move(ply, san, uci, fen, ms):  # noqa: E306
             json.dump({"type": "move", "ply": ply, "san": san,
-                       "uci": uci, "fen": fen}, sys.stdout)
+                       "uci": uci, "fen": fen, "ms": ms}, sys.stdout)
             sys.stdout.write("\n")
             sys.stdout.flush()
 
@@ -95,6 +95,7 @@ def main(argv=None) -> int:
         "moves_uci": r.moves_uci,
         "moves_san": r.moves_san,
         "fens": r.fens,
+        "times_ms": r.times_ms,
         "pgn": r.pgn,
     }
     json.dump(out, sys.stdout)

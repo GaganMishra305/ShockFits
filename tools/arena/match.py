@@ -7,6 +7,7 @@ The engines themselves stay pure C++ / external binaries.
 from __future__ import annotations
 
 import datetime as _dt
+import time as _time
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -64,6 +65,7 @@ class GameResult:
     moves_uci: List[str] = field(default_factory=list)  # for board replay
     moves_san: List[str] = field(default_factory=list)  # for the move list
     fens: List[str] = field(default_factory=list)        # position after each ply
+    times_ms: List[int] = field(default_factory=list)    # think time per ply
 
     def score_for(self, name: str) -> float:
         """Points (1 / 0.5 / 0) scored by `name` in this game."""
@@ -99,34 +101,38 @@ def play_game(white: Bot, black: Bot,
     moves_uci: List[str] = []
     moves_san: List[str] = []
     fens: List[str] = []
+    times_ms: List[int] = []
 
-    def record(mv: chess.Move) -> None:
+    def record(mv: chess.Move, ms: int = 0) -> None:
         san = board.san(mv)  # SAN must be taken BEFORE pushing
         moves_san.append(san)
         moves_uci.append(mv.uci())
         board.push(mv)
         fen = board.fen()
         fens.append(fen)
+        times_ms.append(ms)
         node_ref[0] = node_ref[0].add_variation(mv)
         if on_move is not None:
-            on_move(len(moves_uci), san, mv.uci(), fen)
+            on_move(len(moves_uci), san, mv.uci(), fen, ms)
 
     node_ref = [game]  # mutable cell so the nested record() can advance it
 
     try:
-        # Play forced opening moves (if legal).
+        # Play forced opening moves (if legal). Book moves are instant (0 ms).
         for uci in (opening or []):
             mv = chess.Move.from_uci(uci)
             if mv in board.legal_moves:
-                record(mv)
+                record(mv, 0)
 
         while not board.is_game_over(claim_draw=True) and board.ply() < max_plies:
             eng = we if board.turn == chess.WHITE else be
             limit = bot_to_limit(white if board.turn == chess.WHITE else black)
+            t0 = _time.perf_counter()
             play = eng.play(board, limit)
+            ms = int((_time.perf_counter() - t0) * 1000)
             if play.move is None:
                 break
-            record(play.move)
+            record(play.move, ms)
     finally:
         if own_white:
             we.quit()
@@ -142,4 +148,5 @@ def play_game(white: Bot, black: Bot,
 
     game.headers["Result"] = result
     return GameResult(white.name, black.name, result, termination,
-                      board.ply(), str(game), moves_uci, moves_san, fens)
+                      board.ply(), str(game), moves_uci, moves_san, fens,
+                      times_ms)
