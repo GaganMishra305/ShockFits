@@ -1,0 +1,55 @@
+{
+  "type": "calibration",
+  "bot": "shockfits-blitz",
+  "generated": "2026-07-17T15:15:17",
+  "movetime_ms": 100,
+  "ladder": [
+    {
+      "elo": 1800,
+      "games": 6,
+      "wins": 4,
+      "draws": 0,
+      "losses": 2,
+      "score": 0.6667,
+      "perf": 1920.4
+    },
+    {
+      "elo": 2100,
+      "games": 6,
+      "wins": 3,
+      "draws": 1,
+      "losses": 2,
+      "score": 0.5833,
+      "perf": 2158.5
+    },
+    {
+      "elo": 2400,
+      "games": 6,
+      "wins": 3,
+      "draws": 3,
+      "losses": 0,
+      "score": 0.75,
+      "perf": 2590.8
+    },
+    {
+      "elo": 2700,
+      "games": 6,
+      "wins": 2,
+      "draws": 3,
+      "losses": 1,
+      "score": 0.5833,
+      "perf": 2758.5
+    },
+    {
+      "elo": 3000,
+      "games": 6,
+      "wins": 0,
+      "draws": 3,
+      "losses": 3,
+      "score": 0.25,
+      "perf": 2809.2
+    }
+  ],
+  "estimate_elo": 2447,
+  "crossover_elo": 2775
+}
