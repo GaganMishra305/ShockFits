@@ -73,7 +73,7 @@ async function runGame() {
     btn.disabled = true;
     document.getElementById('result-banner').classList.add('hidden');
     game = { white, black, result: null, termination: null,
-             moves_san: [], moves_uci: [], fens: [] };
+             moves_san: [], moves_uci: [], fens: [], times: [] };
     ply = 0;
     liveFollow = true;
     renderMatchup();
@@ -97,6 +97,7 @@ async function runGame() {
             game.moves_san.push(msg.san);
             game.moves_uci.push(msg.uci);
             game.fens.push(msg.fen);
+            game.times.push(typeof msg.ms === 'number' ? msg.ms : null);
             renderMoves();
             if (liveFollow) goToPly(game.fens.length);  // auto-follow newest
             else document.getElementById('ply-indicator').textContent =
@@ -160,9 +161,16 @@ function moveSpan(idx) {
     const s = document.createElement('span');
     s.className = 'm';
     s.dataset.ply = idx + 1;  // this move produces position at ply idx+1
-    s.textContent = game.moves_san[idx];
+    const t = game.times ? game.times[idx] : null;
+    const tt = t != null ? ` <span class="mt">${fmtMs(t)}</span>` : '';
+    s.innerHTML = game.moves_san[idx] + tt;
     s.onclick = () => { liveFollow = false; stopAuto(); goToPly(idx + 1); };
     return s;
+}
+
+function fmtMs(ms) {
+    if (ms == null) return '';
+    return ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : ms + 'ms';
 }
 
 function goToPly(k) {
