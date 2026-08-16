@@ -3,48 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ShockFits</title>
-   
+    <title>ShockFits - Chess Engine Arena</title>
     <link rel="stylesheet"
       href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>ShockFits</h1>
-        <p style="text-align:center;margin-bottom:16px">
-            <a href="arena.html" style="color:#667eea;font-weight:600;text-decoration:none">Enter the Arena (bot vs bot replays) &rarr;</a>
-        </p>
-        
-        <div class="game-info">
-            <div id="status">Pick players and press Start.</div>
-            <div>Moves: <span id="move-count">0</span></div>
-        </div>
-
-        <div class="side-pickers">
-            <div class="side-pick">
-                <label for="white-player">White</label>
-                <select id="white-player"></select>
-            </div>
-            <div class="side-pick">
-                <label for="black-player">Black</label>
-                <select id="black-player"></select>
-            </div>
-            <button id="start-btn">Start</button>
-        </div>
-
-        <div class="main-layout">
-            <div class="board-section">
-                <div id="board"></div>
-                <div class="controls">
-                    <button id="reset-btn">New Game</button>
-                    <button id="pause-btn" class="hidden">Pause</button>
-                    <button id="undo-btn">Undo</button>
-                    <button id="flip-btn">Flip Board</button>
+    <div class="app">
+        <header class="topbar">
+            <div class="brand">
+                <span class="logo">&#9822;</span>
+                <div>
+                    <h1>ShockFits</h1>
+                    <p class="tagline">A chess engine built from scratch in C++</p>
                 </div>
             </div>
-            <div id="moves-list" class="moves-section"></div>
+            <div class="elo-badge" id="elo-badge" title="Measured vs Stockfish (UCI_Elo)">
+                <span class="elo-label">Current bot level</span>
+                <span class="elo-value" id="elo-value">— Elo</span>
+            </div>
+        </header>
+
+        <section class="setup card">
+            <div class="pickers">
+                <div class="picker">
+                    <span class="chip chip-white">&#9812;</span>
+                    <div class="picker-body">
+                        <label for="white-player">White</label>
+                        <select id="white-player"></select>
+                    </div>
+                </div>
+                <div class="picker">
+                    <span class="chip chip-black">&#9818;</span>
+                    <div class="picker-body">
+                        <label for="black-player">Black</label>
+                        <select id="black-player"></select>
+                    </div>
+                </div>
+                <div class="picker" id="opening-wrap">
+                    <span class="chip chip-book">&#9993;</span>
+                    <div class="picker-body">
+                        <label for="opening-select">Opening (bot vs bot)</label>
+                        <select id="opening-select"></select>
+                    </div>
+                </div>
+                <button id="start-btn" class="btn-primary">Start Game</button>
+            </div>
+        </section>
+
+        <div class="arena-grid">
+            <section class="board-panel card">
+                <div class="matchup" id="matchup"></div>
+                <div id="result-banner" class="result-banner hidden"></div>
+                <div id="board"></div>
+                <div class="controls">
+                    <button id="first-btn" class="ctrl hidden" title="Start">&#124;&#9664;</button>
+                    <button id="prev-btn" class="ctrl hidden" title="Previous">&#9664;</button>
+                    <button id="play-btn" class="ctrl hidden" title="Autoplay">&#9654;</button>
+                    <button id="next-btn" class="ctrl hidden" title="Next">&#9654;</button>
+                    <button id="last-btn" class="ctrl hidden" title="End">&#9654;&#124;</button>
+                    <button id="pause-btn" class="ctrl hidden">Pause</button>
+                    <button id="undo-btn" class="ctrl hidden">Undo</button>
+                    <button id="flip-btn" class="ctrl">Flip</button>
+                    <span id="ply-indicator" class="ply-indicator"></span>
+                </div>
+            </section>
+
+            <aside class="side-panel card">
+                <div class="status-line" id="status">Pick two fighters and press Start.</div>
+                <h3 class="moves-title">Moves</h3>
+                <div id="moves-list" class="moves-section"></div>
+            </aside>
         </div>
+
+        <footer class="foot">
+            <span>ShockFits &middot; bitboards, alpha-beta, Lazy SMP, UCI</span>
+            <a href="https://github.com/GaganMishra305/ShockFits" target="_blank" rel="noopener">GitHub</a>
+        </footer>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>

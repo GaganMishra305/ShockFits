@@ -35,6 +35,20 @@ app.get('/api/bots', (req, res) => {
     res.json({ bots, stockfish });
 });
 
+// ---- Elo: latest calibration result --------------------------------------
+app.get('/api/elo', (req, res) => {
+    const candidates = [
+        path.join(REPO_ROOT, 'web/data/elo.json'),
+        path.join(REPO_ROOT, 'docs/elo.json'),
+    ];
+    for (const f of candidates) {
+        try {
+            if (fs.existsSync(f)) return res.json(JSON.parse(fs.readFileSync(f)));
+        } catch (e) { /* try next */ }
+    }
+    res.json({ estimate_elo: null });
+});
+
 // ---- Arena: run a single game on demand -----------------------------------
 app.post('/api/arena/run', (req, res) => {
     const { white, black, opening } = req.body || {};

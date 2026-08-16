@@ -1,232 +1,314 @@
-// ShockFits Play page: White and Black can each be a Human or any bot.
-// Shows per-move thinking time; supports bot-vs-bot with pause/resume.
+// ShockFits unified arena.
+//   - Human involved  -> interactive game (drag to move; bot replies via API).
+//   - Bot vs bot       -> live stream (SSE) + scrubbable replay.
 
-let game = new Chess();
+const OPENINGS = [
+    'Start position', 'Open Game (1.e4 e5)', 'Sicilian (1.e4 c5)',
+    'French (1.e4 e6)', 'Caro-Kann (1.e4 c6)', "Queen's Gambit",
+    "King's Indian setup", 'Reti', 'English (1.c4 e5)', 'Ruy Lopez',
+];
+
 let board = null;
-let history = [];      // chess.js move objects
-let times = [];        // think time (ms) per ply, parallel to history
+let chessLocal = new Chess();      // used in interactive mode
 let players = { w: 'human', b: 'human' };
+let mode = 'interactive';
+
+// Shared view state
+let moves = [];   // [{san, ms}]
+let fens = [];    // position after each ply
+let ply = 0;      // view cursor (interactive: always latest)
+
+// Interactive state
 let thinking = false;
 let paused = false;
 let started = false;
 
-function pieceTheme(piece) { return 'img/wikipedia/' + piece + '.png'; }
+// Stream state
+let evtSource = null;
+let liveFollow = true;
+let result = null, termination = null, mWhite = '', mBlack = '';
+
+function pieceTheme(p) { return 'img/wikipedia/' + p + '.png'; }
+function isBot(c) { return players[c] !== 'human'; }
+function fmtMs(ms) {
+    if (ms == null) return '';
+    return ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : ms + 'ms';
+}
+const $ = (id) => document.getElementById(id);
 
 function initBoard() {
     board = Chessboard('board', {
-        pieceTheme: pieceTheme,
-        draggable: true,
-        position: 'start',
+        pieceTheme, draggable: true, position: 'start',
         onDragStart, onDrop, onSnapEnd,
     });
-    updateUI();
 }
 
 async function loadBots() {
     let bots = [], stockfish = [];
     try {
-        const data = await (await fetch('/api/bots')).json();
-        bots = data.bots || []; stockfish = data.stockfish || [];
-    } catch (e) { console.error('could not load bots', e); }
+        const d = await (await fetch('/api/bots')).json();
+        bots = d.bots || []; stockfish = d.stockfish || [];
+    } catch (e) { console.error(e); }
 
     for (const which of ['white-player', 'black-player']) {
-        const sel = document.getElementById(which);
-        sel.innerHTML = '';
-        const human = document.createElement('option');
-        human.value = 'human'; human.textContent = 'Human';
-        sel.appendChild(human);
+        const sel = $(which); sel.innerHTML = '';
+        const o = document.createElement('option');
+        o.value = 'human'; o.textContent = 'Human (you)'; sel.appendChild(o);
         const grp = (label, list) => {
-            const og = document.createElement('optgroup');
-            og.label = label;
+            const og = document.createElement('optgroup'); og.label = label;
             list.forEach(b => {
-                const o = document.createElement('option');
-                o.value = b.name; o.textContent = b.name;
-                og.appendChild(o);
+                const x = document.createElement('option');
+                x.value = b.name; x.textContent = b.name; og.appendChild(x);
             });
             sel.appendChild(og);
         };
-        grp('ShockFits bots', bots);
-        grp('Stockfish', stockfish);
+        grp('ShockFits bots', bots); grp('Stockfish', stockfish);
     }
-    // Default: Human (White) vs first ShockFits bot (Black).
-    if (bots[0]) document.getElementById('black-player').value = bots[0].name;
+    $('white-player').value = 'human';
+    $('black-player').value = bots[0] ? bots[0].name : 'human';
+
+    const os = $('opening-select');
+    OPENINGS.forEach((label, i) => {
+        const x = document.createElement('option');
+        x.value = String(i); x.textContent = label; os.appendChild(x);
+    });
 }
 
-function isBot(color) { return players[color] !== 'human'; }
-function turnColor() { return game.turn(); }  // 'w' | 'b'
-
-function startGame() {
-    players.w = document.getElementById('white-player').value;
-    players.b = document.getElementById('black-player').value;
-    started = true;
-    paused = false;
-
-    // Show pause control only for bot-vs-bot.
-    const pauseBtn = document.getElementById('pause-btn');
-    pauseBtn.classList.toggle('hidden', !(isBot('w') && isBot('b')));
-    pauseBtn.textContent = 'Pause';
-
-    resetGame(true);
-    scheduleTurn();
-}
-
-function resetGame(keepStarted) {
-    game.reset();
-    board.start();
-    history = [];
-    times = [];
-    thinking = false;
-    if (!keepStarted) started = false;
-    updateUI();
-}
-
-function onDragStart(source, piece) {
-    if (!started || thinking || game.game_over()) return false;
-    const t = turnColor();
-    if (isBot(t)) return false;                       // bot's turn, no dragging
-    if ((t === 'w' && piece.search(/^b/) !== -1) ||
-        (t === 'b' && piece.search(/^w/) !== -1)) return false;
-}
-
-function onDrop(source, target) {
-    const move = game.move({ from: source, to: target, promotion: 'q' });
-    if (move === null) return 'snapback';
-    history.push(move);
-    times.push(null);  // human move: no engine time
-    updateUI();
-    setTimeout(scheduleTurn, 100);
-}
-
-function onSnapEnd() { board.position(game.fen()); }
-
-function scheduleTurn() {
-    if (!started || game.game_over()) { updateStatus(); return; }
-    const t = turnColor();
-    if (isBot(t) && !paused) {
-        setTimeout(makeBotMove, 250);
-    } else {
-        updateStatus();  // waiting for human (or paused)
-    }
-}
-
-async function makeBotMove() {
-    if (!started || game.game_over() || paused) return;
-    const t = turnColor();
-    const bot = players[t];
-    thinking = true;
-    updateStatus();
-
+async function loadElo() {
     try {
-        const res = await fetch('/api/bot-move', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fen: game.fen(), bot }),
-        });
-        const data = await res.json();
-        thinking = false;
-
-        if (!data.move) { updateStatus(); return; }
-        const move = game.move({
-            from: data.move.substring(0, 2),
-            to: data.move.substring(2, 4),
-            promotion: data.move.substring(4, 5) || 'q',
-        });
-        if (move) {
-            history.push(move);
-            times.push(typeof data.ms === 'number' ? data.ms : null);
-            board.position(game.fen());
-            updateUI();
-            setTimeout(scheduleTurn, 200);  // continue (bot-vs-bot loops here)
+        const d = await (await fetch('/api/elo')).json();
+        if (d && d.estimate_elo) {
+            $('elo-value').textContent = `${d.estimate_elo} Elo`;
+            $('elo-badge').title =
+                `${d.bot} @ ${d.movetime_ms}ms/move, measured vs Stockfish (UCI_Elo)`;
+        } else {
+            $('elo-value').textContent = 'unrated';
         }
-    } catch (e) {
-        thinking = false;
-        console.error(e);
-        updateStatus();
-    }
+    } catch (e) { $('elo-value').textContent = 'unrated'; }
 }
 
-function fmtMs(ms) {
-    if (ms == null) return '';
-    return ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : ms + 'ms';
+// ---- shared rendering -----------------------------------------------------
+function setStatus(msg, opts = {}) {
+    const el = $('status');
+    el.textContent = msg;
+    el.classList.toggle('thinking', !!opts.thinking);
 }
-
-function updateUI() {
-    updateStatus();
-    updateMovesList();
-    document.getElementById('move-count').textContent = history.length;
+function renderMatchup(w, b) {
+    $('matchup').innerHTML =
+        `<span class="name">${w}</span><span class="vs">vs</span><span class="name">${b}</span>`;
 }
-
-function updateStatus() {
-    const t = turnColor();
-    const who = (c) => isBot(c) ? players[c] : 'Human';
-    let status;
-
-    if (!started) {
-        status = 'Pick players and press Start.';
-    } else if (game.in_checkmate()) {
-        const winner = t === 'w' ? 'Black' : 'White';
-        status = `Checkmate — ${winner} (${who(t === 'w' ? 'b' : 'w')}) wins`;
-    } else if (game.in_stalemate()) {
-        status = 'Stalemate — draw';
-    } else if (game.in_draw()) {
-        status = 'Draw';
-    } else if (thinking) {
-        const lastLbl = who(t);
-        status = `${lastLbl} (${t === 'w' ? 'White' : 'Black'}) is thinking...`;
+function renderBanner() {
+    const el = $('result-banner');
+    if (!result) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden', 'banner-w', 'banner-l', 'banner-d');
+    if (result === '1/2-1/2') {
+        el.textContent = `Draw — ${termination}`; el.classList.add('banner-d');
     } else {
-        // Show last move's think time if available.
-        const lastMs = times.length ? times[times.length - 1] : null;
-        const tail = lastMs != null ? `  (last move: ${fmtMs(lastMs)})` : '';
-        status = `${who(t)} to move (${t === 'w' ? 'White' : 'Black'})${tail}`;
-        if (paused) status = 'Paused. ' + status;
+        const winner = result === '1-0' ? mWhite : mBlack;
+        el.textContent = `${result} — ${winner} wins by ${termination}`;
+        el.classList.add('banner-w');
     }
-    document.getElementById('status').textContent = status;
 }
-
-function updateMovesList() {
-    const list = document.getElementById('moves-list');
-    list.innerHTML = '';
-    for (let i = 0; i < history.length; i += 2) {
-        const moveNum = Math.floor(i / 2) + 1;
-        const w = history[i], b = history[i + 1];
-        const wt = fmtMs(times[i]), bt = fmtMs(times[i + 1]);
-        const div = document.createElement('div');
-        div.className = 'move-entry';
-        div.innerHTML =
-            `<span class="move-number">${moveNum}.</span>` +
-            `${w.san}${wt ? ` <span class="mt">${wt}</span>` : ''}` +
-            (b ? `  ${b.san}${bt ? ` <span class="mt">${bt}</span>` : ''}` : '');
-        list.appendChild(div);
+function renderMoves(clickable) {
+    const list = $('moves-list'); list.innerHTML = '';
+    for (let i = 0; i < moves.length; i += 2) {
+        const num = Math.floor(i / 2) + 1;
+        const row = document.createElement('div'); row.className = 'move-entry';
+        row.innerHTML = `<span class="move-number">${num}.</span>`;
+        row.appendChild(cell(i, clickable));
+        if (moves[i + 1]) row.appendChild(cell(i + 1, clickable));
+        list.appendChild(row);
     }
     list.scrollTop = list.scrollHeight;
 }
-
-function undoMove() {
-    if (history.length === 0) return;
-    game.undo(); history.pop(); times.pop();
-    // If a human is playing against a bot, undo the bot's reply too so it's
-    // the human's move again.
-    const t = turnColor();
-    if (isBot(t) && history.length > 0) {
-        game.undo(); history.pop(); times.pop();
-    }
-    board.position(game.fen());
-    updateUI();
+function cell(i, clickable) {
+    const s = document.createElement('span');
+    s.className = clickable ? 'm' : 'san';
+    s.dataset.ply = i + 1;
+    const mt = fmtMs(moves[i].ms);
+    s.innerHTML = `${moves[i].san}${mt ? ` <span class="mt">${mt}</span>` : ''}`;
+    if (clickable) s.onclick = () => { liveFollow = false; stopAuto(); goToPly(i + 1); };
+    return s;
+}
+function goToPly(k) {
+    ply = Math.max(0, Math.min(k, fens.length));
+    board.position(ply === 0 ? 'start' : fens[ply - 1]);
+    $('ply-indicator').textContent = fens.length ? `${ply} / ${fens.length}` : '';
+    document.querySelectorAll('.move-entry .m').forEach(el =>
+        el.classList.toggle('current', parseInt(el.dataset.ply, 10) === ply));
+    const cur = document.querySelector('.move-entry .m.current');
+    if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function showControls(streamMode, human) {
+    ['first-btn', 'prev-btn', 'play-btn', 'next-btn', 'last-btn'].forEach(
+        id => $(id).classList.toggle('hidden', !streamMode));
+    $('pause-btn').classList.add('hidden');  // not used in the unified flow
+    $('undo-btn').classList.toggle('hidden', !human);
 }
 
-function togglePause() {
-    paused = !paused;
-    document.getElementById('pause-btn').textContent = paused ? 'Resume' : 'Pause';
-    if (!paused) scheduleTurn();
-    else updateStatus();
+// ---- start dispatch -------------------------------------------------------
+function resetView() {
+    moves = []; fens = []; ply = 0; result = null; termination = null;
+    renderMoves(false); board.start(); $('result-banner').classList.add('hidden');
+    $('ply-indicator').textContent = '';
+}
+
+function startGame() {
+    if (evtSource) { evtSource.close(); evtSource = null; }
+    stopAuto();
+    players.w = $('white-player').value;
+    players.b = $('black-player').value;
+    mWhite = players.w; mBlack = players.b;
+    resetView();
+    renderMatchup(mWhite, mBlack);
+
+    const bothBots = isBot('w') && isBot('b');
+    mode = bothBots ? 'stream' : 'interactive';
+    if (bothBots) startStream();
+    else startInteractive();
+}
+
+// ---- interactive (human involved) -----------------------------------------
+function startInteractive() {
+    showControls(false, true);
+    chessLocal.reset(); board.start();
+    started = true; paused = false; thinking = false;
+    setStatus('Game on. ' + turnLabel() + ' to move.');
+    board.orientation(isBot('w') && !isBot('b') ? 'black' : 'white');
+    scheduleInteractiveTurn();
+}
+function turnLabel() {
+    const t = chessLocal.turn();
+    const who = isBot(t) ? players[t] : 'You';
+    return `${who} (${t === 'w' ? 'White' : 'Black'})`;
+}
+function onDragStart(src, piece) {
+    if (mode !== 'interactive' || !started || thinking || chessLocal.game_over())
+        return false;
+    const t = chessLocal.turn();
+    if (isBot(t)) return false;
+    if ((t === 'w' && piece.search(/^b/) !== -1) ||
+        (t === 'b' && piece.search(/^w/) !== -1)) return false;
+}
+function onDrop(src, tgt) {
+    const mv = chessLocal.move({ from: src, to: tgt, promotion: 'q' });
+    if (mv === null) return 'snapback';
+    pushLocal(mv, null);
+    setTimeout(scheduleInteractiveTurn, 80);
+}
+function onSnapEnd() { if (mode === 'interactive') board.position(chessLocal.fen()); }
+function pushLocal(mv, ms) {
+    moves.push({ san: mv.san, ms }); fens.push(chessLocal.fen());
+    renderMoves(false); ply = fens.length; goToPly(ply);
+    $('ply-indicator').textContent = '';
+}
+function scheduleInteractiveTurn() {
+    if (!started || chessLocal.game_over()) { finishInteractive(); return; }
+    const t = chessLocal.turn();
+    if (isBot(t) && !paused) setTimeout(botMove, 200);
+    else setStatus(turnLabel() + ' to move.' + lastTimeSuffix());
+}
+function lastTimeSuffix() {
+    const last = moves.length ? moves[moves.length - 1].ms : null;
+    return last != null ? `  (last: ${fmtMs(last)})` : '';
+}
+async function botMove() {
+    if (!started || chessLocal.game_over() || paused) return;
+    const t = chessLocal.turn();
+    thinking = true;
+    setStatus(`${players[t]} (${t === 'w' ? 'White' : 'Black'}) is thinking...`,
+              { thinking: true });
+    try {
+        const d = await (await fetch('/api/bot-move', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fen: chessLocal.fen(), bot: players[t] }),
+        })).json();
+        thinking = false;
+        if (!d.move) { finishInteractive(); return; }
+        const mv = chessLocal.move({
+            from: d.move.slice(0, 2), to: d.move.slice(2, 4),
+            promotion: d.move.slice(4, 5) || 'q',
+        });
+        if (mv) { pushLocal(mv, d.ms); setTimeout(scheduleInteractiveTurn, 150); }
+    } catch (e) { thinking = false; setStatus('Error: ' + e.message); }
+}
+function finishInteractive() {
+    if (chessLocal.in_checkmate()) {
+        const t = chessLocal.turn();
+        result = t === 'w' ? '0-1' : '1-0'; termination = 'checkmate';
+    } else if (chessLocal.in_stalemate()) { result = '1/2-1/2'; termination = 'stalemate'; }
+    else if (chessLocal.in_draw()) { result = '1/2-1/2'; termination = 'draw'; }
+    if (result) { renderBanner(); setStatus('Game over.'); }
+    else setStatus(turnLabel() + ' to move.' + lastTimeSuffix());
+}
+function undoMove() {
+    if (mode !== 'interactive' || moves.length === 0) return;
+    chessLocal.undo(); moves.pop(); fens.pop();
+    const t = chessLocal.turn();
+    if (isBot(t) && moves.length > 0) { chessLocal.undo(); moves.pop(); fens.pop(); }
+    result = null; renderBanner(); renderMoves(false);
+    ply = fens.length; goToPly(ply); scheduleInteractiveTurn();
+}
+
+// ---- stream (bot vs bot) --------------------------------------------------
+function startStream() {
+    showControls(true, false);
+    liveFollow = true;
+    const opening = parseInt($('opening-select').value, 10) || 0;
+    setStatus(`Live: ${mWhite} vs ${mBlack}... watching moves as they happen.`,
+              { thinking: true });
+    $('start-btn').disabled = true;
+
+    const url = `/api/arena/stream?white=${encodeURIComponent(mWhite)}` +
+                `&black=${encodeURIComponent(mBlack)}&opening=${opening}`;
+    evtSource = new EventSource(url);
+    evtSource.onmessage = (e) => {
+        let m; try { m = JSON.parse(e.data); } catch { return; }
+        if (m.type === 'move') {
+            moves.push({ san: m.san, ms: m.ms }); fens.push(m.fen);
+            renderMoves(true);
+            if (liveFollow) goToPly(fens.length);
+            else $('ply-indicator').textContent = `${ply} / ${fens.length}`;
+        } else if (m.type === 'end') {
+            result = m.result; termination = m.termination;
+            renderBanner();
+            setStatus(`Done: ${m.result} (${m.termination}, ${m.plies} plies). Scrub to replay.`);
+        }
+    };
+    evtSource.addEventListener('done', endStream);
+    evtSource.onerror = () => { if (!result) setStatus('Stream ended.'); endStream(); };
+}
+function endStream() {
+    if (evtSource) { evtSource.close(); evtSource = null; }
+    $('start-btn').disabled = false;
+}
+
+// ---- autoplay (replay) ----------------------------------------------------
+let autoTimer = null;
+function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } $('play-btn').innerHTML = '&#9654;'; }
+function toggleAuto() {
+    if (autoTimer) { stopAuto(); return; }
+    liveFollow = false;
+    if (ply >= fens.length) goToPly(0);
+    $('play-btn').innerHTML = '&#10073;&#10073;';
+    autoTimer = setInterval(() => {
+        if (ply >= fens.length) { stopAuto(); return; }
+        goToPly(ply + 1);
+    }, 600);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    initBoard();
-    loadBots();
-    document.getElementById('start-btn').addEventListener('click', startGame);
-    document.getElementById('reset-btn').addEventListener('click', () => resetGame(false));
-    document.getElementById('undo-btn').addEventListener('click', undoMove);
-    document.getElementById('flip-btn').addEventListener('click', () => board.flip());
-    document.getElementById('pause-btn').addEventListener('click', togglePause);
+    initBoard(); loadBots(); loadElo();
+    $('start-btn').onclick = startGame;
+    $('flip-btn').onclick = () => board.flip();
+    $('undo-btn').onclick = undoMove;
+    $('pause-btn').onclick = () => {
+        paused = !paused;
+        $('pause-btn').textContent = paused ? 'Resume' : 'Pause';
+    };
+    $('first-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(0); };
+    $('prev-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(ply - 1); };
+    $('next-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(ply + 1); };
+    $('last-btn').onclick = () => { liveFollow = false; stopAuto(); goToPly(fens.length); };
+    $('play-btn').onclick = toggleAuto;
 });
