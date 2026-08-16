@@ -5,6 +5,11 @@
 *(performance rating for `shockfits-blitz` at 100 ms/move, measured vs Stockfish
 with calibrated `UCI_Elo` — see [Measuring strength](#measuring-strength-elo).)*
 
+![ShockFits arena — shockfits-blitz checkmates Stockfish (skill 8)](docs/arena.png)
+
+*The browser arena: watch bots fight live (with per-move think times), then scrub
+the replay. Above, `shockfits-blitz` mates `stockfish-skill8`.*
+
 A chess engine built **from scratch in C++** — bitboards, alpha-beta search,
 a lock-free transposition table, Lazy-SMP multithreading, and the UCI protocol —
 with a browser **arena** to play it, watch bots fight live, and pit it against
@@ -101,8 +106,6 @@ Latest run — `shockfits-blitz` @ 100 ms/move (6 games/rung):
 > and Stockfish's `UCI_Elo` is itself an approximation. Treat this as a ballpark
 > "it plays around 2400-2500 blitz strength," not a rating-list number. Re-run
 > with more games for tighter bounds.
-
-*(Screenshot / replay clip of a live bot-vs-bot game: coming soon.)*
 
 ---
 
