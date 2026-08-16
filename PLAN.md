@@ -189,6 +189,16 @@ the chessboard piece art, the general client architecture.
 - **Phase 9 (deferred, owner idea):** README header "Current bot level: XXXX
   Elo" (needs a calibration ladder) + an embedded replay screenshot/video.
 
+- **Phase 9 — DONE (Elo + UI glow-up):** built `tools.arena.calibrate` — ladders
+  a bot vs Stockfish `UCI_LimitStrength`/`UCI_Elo` rungs, reports a games-weighted
+  performance rating + 50% crossover, writes `web/data/elo.json` +
+  committed `docs/elo.json`. Result: `shockfits-blitz` @ 100ms ~ **2447 Elo**
+  (crossover ~2775). README rewritten with the "Current bot level" header and
+  honest methodology/caveats. UI: **unified** Play + Arena into one page
+  (`/api/elo` badge, dark theme), Human selectable per side; human games are
+  interactive, bot-vs-bot streams live + scrubbable. Removed the separate arena
+  page. (Screenshot/replay clip in README still TODO.)
+
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
 2. UI lets you play any bot version, run a Bots Royale, and a Stockfish Gauntlet.
