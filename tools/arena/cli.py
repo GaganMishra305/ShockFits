@@ -23,7 +23,9 @@ from pathlib import Path
 from typing import Optional
 
 from . import bots as reg
-from . import tournament
+# NOTE: tournament/match import python-chess. We import them lazily inside the
+# royale/gauntlet handlers so `list`/`show`/`validate`/`snapshot` work with only
+# the standard library (keeps CI + quick registry ops dependency-free).
 
 # Generated tournament output goes here (served by the web dashboard).
 DATA_DIR = reg.REPO_ROOT / "web" / "data"
@@ -135,6 +137,7 @@ def _stockfish_bot(skill: int, movetime: Optional[int], depth: Optional[int],
 
 
 def _cmd_royale(args: argparse.Namespace) -> int:
+    from . import tournament
     roster = reg.load_registry()
     if args.bots:
         wanted = set(args.bots)
@@ -157,6 +160,7 @@ def _cmd_royale(args: argparse.Namespace) -> int:
 
 
 def _cmd_gauntlet(args: argparse.Namespace) -> int:
+    from . import tournament
     challenger = reg.get_bot(args.challenger)
     if challenger is None or not challenger.engine_exists():
         print(f"error: challenger {args.challenger!r} not found / not built",
