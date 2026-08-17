@@ -1,9 +1,11 @@
 #include "shockfits/uci.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "shockfits/eval.hpp"
 #include "shockfits/movegen.hpp"
@@ -156,6 +158,41 @@ void Uci::stop_search() {
     if (search_thread_.joinable()) search_thread_.join();
 }
 
+// A fixed suite of positions searched to a fixed depth. Deterministic
+// (single-threaded) so CI can track nps regressions over time.
+void Uci::cmd_bench(int depth) {
+    static const char* kBenchFens[] = {
+        "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+        "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+        "r1bq1rk1/pp2bppp/2n2n2/2pp4/3P4/2N1PN2/PP2BPPP/R1BQ1RK1 w - - 0 1",
+        "r2q1rk1/1b1nbppp/p2ppn2/1p6/3NP3/1BN1B3/PPP1QPPP/R4RK1 w - - 0 1",
+    };
+
+    Searcher bench_searcher(64);
+    bench_searcher.set_threads(1);  // deterministic single-threaded bench
+    SearchLimits limits;
+    limits.max_depth = depth;
+
+    std::uint64_t total_nodes = 0;
+    auto t0 = std::chrono::steady_clock::now();
+    for (const char* fen : kBenchFens) {
+        Board b(fen);
+        bench_searcher.new_game();
+        SearchResult r = bench_searcher.search(b, limits, /*verbose=*/false);
+        total_nodes += r.nodes;
+    }
+    double sec =
+        std::chrono::duration<double>(std::chrono::steady_clock::now() - t0)
+            .count();
+    std::uint64_t nps = sec > 0 ? (std::uint64_t)(total_nodes / sec) : total_nodes;
+
+    std::cout << "bench depth " << depth << " nodes " << total_nodes
+              << " time " << (long long)(sec * 1000) << "ms nps " << nps
+              << "\n";
+    std::cout.flush();
+}
+
 bool Uci::handle(const std::string& line) {
     std::istringstream ss(line);
     std::string cmd;
@@ -175,6 +212,10 @@ bool Uci::handle(const std::string& line) {
     else if (cmd == "perft") {
         int depth = rest.empty() ? 1 : std::stoi(rest);
         std::cout << "nodes " << perft(board_, depth) << "\n";
+    }
+    else if (cmd == "bench") {
+        int depth = rest.empty() ? 9 : std::stoi(rest);
+        cmd_bench(depth);
     }
     else if (cmd == "d") std::cout << board_.fen() << "\n";
     else if (cmd == "quit") { stop_search(); return false; }

@@ -37,6 +37,7 @@ class Uci {
     void cmd_setoption(const std::string& args);
     void cmd_position(const std::string& args);
     void cmd_go(const std::string& args);
+    void cmd_bench(int depth);
 
     // Parse a UCI move ("e2e4", "e7e8q") into a legal Move for the current
     // board, or kNullMove if it isn't legal.
