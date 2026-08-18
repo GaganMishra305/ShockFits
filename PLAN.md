@@ -198,6 +198,16 @@ the chessboard piece art, the general client architecture.
   (`/api/elo` badge, dark theme), Human selectable per side; human games are
   interactive, bot-vs-bot streams live + scrubbable. Removed the separate arena
   page. (Screenshot/replay clip in README still TODO.)
+- **Phase 8 — DONE (CI + polish):** GitHub Actions (`.github/workflows/ci.yml`)
+  on every push/PR: engine build + `ctest` (perft/search/uci) on **ubuntu +
+  macos**, plus an informational `bench`; separate Python job runs registry unit
+  tests + `arena validate` (dependency-free — `cli` lazy-imports the chess-using
+  modules). Added a UCI **`bench`** command (deterministic fixed-depth nps over a
+  position set) + `bench/bench.sh`. First CI run green on all 3 jobs.
+- **Elo (tightened):** re-ran calibration at **20 games/rung** — clean monotonic
+  ladder, perf **2396**, 50% crossover exactly **2400** (methods agree).
+  Headline is **~2400 Elo**. README screenshot refreshed (2396 badge, blitz
+  mates stockfish-skill3) — screenshot TODO now resolved.
 
 ## Definition of done (the "win")
 1. ShockFits is a UCI, multithreaded C++ engine that generates its own moves & searches.
