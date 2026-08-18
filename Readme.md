@@ -1,5 +1,7 @@
 # ShockFits
 
+[![CI](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml/badge.svg)](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml)
+
 ### Current bot level: ~2450 Elo
 
 *(performance rating for `shockfits-blitz` at 100 ms/move, measured vs Stockfish
@@ -108,6 +110,20 @@ Latest run — `shockfits-blitz` @ 100 ms/move (6 games/rung):
 > with more games for tighter bounds.
 
 ---
+
+## Continuous integration & benchmarks
+
+[GitHub Actions](.github/workflows/ci.yml) runs on every push / PR:
+- **Engine** (Ubuntu + macOS): CMake build + `ctest` — the **perft** correctness
+  gate plus search & UCI tests — then an informational `bench`.
+- **Registry** (Python, stdlib only): unit tests + `arena validate` on the roster.
+
+Benchmark the engine's search speed locally (deterministic, single-threaded):
+```bash
+bench/bench.sh            # depth 8 over a standard position set
+bench/bench.sh core/engine 9
+# -> bench depth 8 nodes 49102848 time 10671ms nps 4601165
+```
 
 ## Repo layout
 ```
