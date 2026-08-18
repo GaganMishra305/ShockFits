@@ -2,15 +2,15 @@
 
 [![CI](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml/badge.svg)](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml)
 
-### Current bot level: ~2450 Elo
+### Current bot level: ~2400 Elo
 
 *(performance rating for `shockfits-blitz` at 100 ms/move, measured vs Stockfish
 with calibrated `UCI_Elo` — see [Measuring strength](#measuring-strength-elo).)*
 
-![ShockFits arena — shockfits-blitz checkmates Stockfish (skill 8)](docs/arena.png)
+![ShockFits arena — shockfits-blitz checkmates Stockfish](docs/arena.png)
 
 *The browser arena: watch bots fight live (with per-move think times), then scrub
-the replay. Above, `shockfits-blitz` mates `stockfish-skill8`.*
+the replay. Above, `shockfits-blitz` mates `stockfish-skill3`.*
 
 A chess engine built **from scratch in C++** — bitboards, alpha-beta search,
 a lock-free transposition table, Lazy-SMP multithreading, and the UCI protocol —
@@ -92,22 +92,22 @@ cd web && npm install && npm start   # http://localhost:3000
 number means *strength at that time control*). Each rung yields a score rate; the
 headline is a games-weighted **performance rating**.
 
-Latest run — `shockfits-blitz` @ 100 ms/move (6 games/rung):
+Latest run — `shockfits-blitz` @ 100 ms/move (20 games/rung):
 
 | Stockfish `UCI_Elo` | Score | Perf |
 |---:|---:|---:|
-| 1800 | 67% | 1920 |
-| 2100 | 58% | 2158 |
-| 2400 | 75% | 2591 |
-| 2700 | 58% | 2758 |
-| 3000 | 25% | 2809 |
+| 1800 | 80% | 2041 |
+| 2100 | 65% | 2208 |
+| 2400 | 50% | 2400 |
+| 2700 | 32% | 2573 |
+| 3000 | 20% | 2759 |
 
-**Performance estimate: ~2447 Elo** (50% crossover ≈ 2775).
+**Performance estimate: ~2396 Elo**, and the 50% crossover lands right on
+Stockfish 2400 — the two methods agree, so **~2400 Elo** is the headline.
 
-> Caveats: small samples (6 games/rung, so ±100+ Elo noise), fast time control,
-> and Stockfish's `UCI_Elo` is itself an approximation. Treat this as a ballpark
-> "it plays around 2400-2500 blitz strength," not a rating-list number. Re-run
-> with more games for tighter bounds.
+> Caveats: fast time control, and Stockfish's `UCI_Elo` is itself an
+> approximation, so read this as "plays around 2400 blitz strength," not a
+> rating-list number. Re-run `calibrate` with more games/rung to tighten further.
 
 ---
 
