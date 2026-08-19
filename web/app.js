@@ -36,6 +36,13 @@ function fmtMs(ms) {
 }
 const $ = (id) => document.getElementById(id);
 
+// Optional per-side move-time override (ms). Empty/invalid -> 0 (use bot default).
+function mtFor(color) {
+    const el = $(color === 'w' ? 'white-mt' : 'black-mt');
+    const v = parseInt(el && el.value, 10);
+    return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
 function initBoard() {
     board = Chessboard('board', {
         pieceTheme, draggable: true, position: 'start',
@@ -221,7 +228,8 @@ async function botMove() {
     try {
         const d = await (await fetch('/api/bot-move', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fen: chessLocal.fen(), bot: players[t] }),
+            body: JSON.stringify({ fen: chessLocal.fen(), bot: players[t],
+                                   movetime: mtFor(t) }),
         })).json();
         thinking = false;
         if (!d.move) { finishInteractive(); return; }
@@ -260,7 +268,8 @@ function startStream() {
     $('start-btn').disabled = true;
 
     const url = `/api/arena/stream?white=${encodeURIComponent(mWhite)}` +
-                `&black=${encodeURIComponent(mBlack)}&opening=${opening}`;
+                `&black=${encodeURIComponent(mBlack)}&opening=${opening}` +
+                `&wmt=${mtFor('w')}&bmt=${mtFor('b')}`;
     evtSource = new EventSource(url);
     evtSource.onmessage = (e) => {
         let m; try { m = JSON.parse(e.data); } catch { return; }

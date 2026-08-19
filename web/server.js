@@ -94,6 +94,10 @@ app.get('/api/arena/stream', (req, res) => {
     const args = ['-m', 'tools.arena.play_one', '--stream',
         '--white', String(white), '--black', String(black),
         '--opening', String(opening)];
+    const wmt = parseInt(req.query.wmt, 10);
+    const bmt = parseInt(req.query.bmt, 10);
+    if (Number.isFinite(wmt) && wmt > 0) args.push('--white-movetime', String(wmt));
+    if (Number.isFinite(bmt) && bmt > 0) args.push('--black-movetime', String(bmt));
     const proc = spawn(PYTHON, args, { cwd: REPO_ROOT });
 
     let buf = '';
@@ -124,6 +128,8 @@ app.post('/api/bot-move', (req, res) => {
     }
     const args = ['-m', 'tools.arena.bot_move', '--bot', String(bot),
         '--fen', String(fen)];
+    const mt = parseInt((req.body || {}).movetime, 10);
+    if (Number.isFinite(mt) && mt > 0) args.push('--movetime', String(mt));
     const proc = spawn(PYTHON, args, { cwd: REPO_ROOT });
     let out = '', err = '';
     proc.stdout.on('data', (d) => (out += d.toString()));

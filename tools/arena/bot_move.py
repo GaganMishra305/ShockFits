@@ -16,7 +16,7 @@ import time
 import chess
 
 from .match import bot_to_limit, open_engine
-from .play_one import resolve_fighter
+from .play_one import resolve_fighter, with_movetime
 
 
 def main(argv=None) -> int:
@@ -24,9 +24,12 @@ def main(argv=None) -> int:
     p.add_argument("--bot", required=True)
     p.add_argument("--fen", required=True)
     p.add_argument("--sf-movetime", type=int, default=200)
+    p.add_argument("--movetime", type=int, default=0,
+                   help="override the bot's move time in ms (0 = bot default)")
     args = p.parse_args(argv)
 
     bot = resolve_fighter(args.bot, args.sf_movetime)
+    bot = with_movetime(bot, args.movetime)
     try:
         board = chess.Board(args.fen)
     except ValueError as exc:

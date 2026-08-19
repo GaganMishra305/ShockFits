@@ -44,6 +44,17 @@ def resolve_fighter(name: str, sf_movetime: int) -> reg.Bot:
     return bot
 
 
+def with_movetime(bot: reg.Bot, ms: int) -> reg.Bot:
+    """Return a copy of `bot` whose only search limit is `ms` move time.
+    If ms <= 0, the bot's own limit is kept unchanged."""
+    if ms and ms > 0:
+        return reg.Bot(name=bot.name, engine=bot.engine,
+                       description=bot.description, version=bot.version,
+                       protocol=bot.protocol, options=dict(bot.options),
+                       limits={"movetime": ms})
+    return bot
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(prog="play_one")
     p.add_argument("--white", required=True)
@@ -52,6 +63,10 @@ def main(argv=None) -> int:
                    help="opening book index (default 0 = startpos)")
     p.add_argument("--sf-movetime", type=int, default=50,
                    help="ms/move for stockfish pseudo-bots")
+    p.add_argument("--white-movetime", type=int, default=0,
+                   help="override White's move time in ms (0 = use bot default)")
+    p.add_argument("--black-movetime", type=int, default=0,
+                   help="override Black's move time in ms (0 = use bot default)")
     p.add_argument("--max-plies", type=int, default=400)
     p.add_argument("--stream", action="store_true",
                    help="emit one JSON line per move as the game progresses")
@@ -59,6 +74,8 @@ def main(argv=None) -> int:
 
     white = resolve_fighter(args.white, args.sf_movetime)
     black = resolve_fighter(args.black, args.sf_movetime)
+    white = with_movetime(white, args.white_movetime)
+    black = with_movetime(black, args.black_movetime)
     opening = OPENING_BOOK[args.opening % len(OPENING_BOOK)]
 
     on_move = None
