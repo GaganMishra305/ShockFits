@@ -7,6 +7,16 @@
 *(performance rating for `shockfits-blitz` at 100 ms/move, measured vs Stockfish
 with calibrated `UCI_Elo` — see [Measuring strength](#measuring-strength-elo).)*
 
+### Watch it play
+
+https://github.com/GaganMishra305/ShockFits/releases/download/v0.1.0/shockfits-demo.mp4
+
+<video src="https://github.com/GaganMishra305/ShockFits/releases/download/v0.1.0/shockfits-demo.mp4" poster="docs/arena.png" controls width="100%">
+  Your browser can't play this video —
+  <a href="https://github.com/GaganMishra305/ShockFits/releases/download/v0.1.0/shockfits-demo.mp4">download the demo</a>
+  or see the still below.
+</video>
+
 ![ShockFits arena — shockfits-blitz checkmates Stockfish](docs/arena.png)
 
 *The browser arena: watch bots fight live (with per-move think times), then scrub
