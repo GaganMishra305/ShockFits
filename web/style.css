@@ -93,6 +93,11 @@ select:focus { border-color: var(--accent); }
 .mt-input:focus { border-color: var(--accent); outline: none; }
 .mt-input::placeholder { color: #5a6089; }
 
+.pick-desc {
+    font-size: 0.76rem; color: var(--muted); line-height: 1.35;
+    margin-top: 4px; min-height: 1.9em;
+}
+
 .btn-primary {
     background: linear-gradient(135deg, var(--accent2), #00a88f);
     color: #04231f; font-weight: 800; border: none; cursor: pointer;

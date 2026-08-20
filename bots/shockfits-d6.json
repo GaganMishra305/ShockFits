@@ -1,5 +1,5 @@
 {
-  "description": "ShockFits, fixed depth 6, single thread. The middleweight.",
+  "description": "Middleweight - medium. Looks 6 moves ahead.",
   "engine": "core/engine",
   "limits": {
     "depth": 6

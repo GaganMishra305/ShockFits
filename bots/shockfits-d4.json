@@ -1,5 +1,5 @@
 {
-  "description": "ShockFits, fixed depth 4, single thread. The featherweight.",
+  "description": "Featherweight - easiest. Looks only 4 moves ahead. Great for beginners.",
   "engine": "core/engine",
   "limits": {
     "depth": 4

@@ -27,10 +27,18 @@ app.get('/api/bots', (req, res) => {
     } catch (e) {
         console.error('[BOTS]', e.message);
     }
-    // Stockfish pseudo-bots at a few skill levels.
+    // Stockfish pseudo-bots at a few skill levels (novice-friendly blurbs).
+    const sfBlurbs = {
+        0: 'Very weak (Skill 0). Blunders a lot - good first opponent.',
+        3: 'Weak (Skill 3). Beginner friendly.',
+        5: 'Casual club player (Skill 5).',
+        8: 'Intermediate (Skill 8). A real test.',
+        12: 'Strong (Skill 12). Tough to beat.',
+        20: 'Full strength (Skill 20). World-class - nearly unbeatable.',
+    };
     const stockfish = [0, 3, 5, 8, 12, 20].map((s) => ({
         name: `stockfish-skill${s}`,
-        description: `Stockfish (Skill Level ${s})`,
+        description: `Stockfish - ${sfBlurbs[s]}`,
     }));
     res.json({ bots, stockfish });
 });

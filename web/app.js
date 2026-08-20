@@ -27,6 +27,7 @@ let started = false;
 let evtSource = null;
 let liveFollow = true;
 let result = null, termination = null, mWhite = '', mBlack = '';
+const botDesc = { human: 'You play this side (drag pieces to move).' };
 
 function pieceTheme(p) { return 'img/wikipedia/' + p + '.png'; }
 function isBot(c) { return players[c] !== 'human'; }
@@ -66,6 +67,7 @@ async function loadBots() {
             list.forEach(b => {
                 const x = document.createElement('option');
                 x.value = b.name; x.textContent = b.name; og.appendChild(x);
+                if (b.description) botDesc[b.name] = b.description;
             });
             sel.appendChild(og);
         };
@@ -79,6 +81,16 @@ async function loadBots() {
         const x = document.createElement('option');
         x.value = String(i); x.textContent = label; os.appendChild(x);
     });
+
+    // Live helper text under each picker so newcomers know what they're facing.
+    const wire = (selId, descId) => {
+        const sel = $(selId), desc = $(descId);
+        const update = () => { desc.textContent = botDesc[sel.value] || ''; };
+        sel.addEventListener('change', update);
+        update();
+    };
+    wire('white-player', 'white-desc');
+    wire('black-player', 'black-desc');
 }
 
 async function loadElo() {

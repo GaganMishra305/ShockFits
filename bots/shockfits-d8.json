@@ -1,5 +1,5 @@
 {
-  "description": "ShockFits, fixed depth 8, two threads. The heavyweight.",
+  "description": "Heavyweight - hard. Looks 8 moves ahead (stronger, a bit slower).",
   "engine": "core/engine",
   "limits": {
     "depth": 8
