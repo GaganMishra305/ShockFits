@@ -62,7 +62,7 @@ class Searcher {
         int history[COLOR_NB][SQ_NB][SQ_NB] = {};
 
         void run(const SearchLimits& limits, bool verbose, bool is_main);
-        int negamax(int depth, int alpha, int beta, int ply);
+        int negamax(int depth, int alpha, int beta, int ply, bool can_null = true);
         int quiescence(int alpha, int beta, int ply);
         std::string pv_string(int max_len);
     };

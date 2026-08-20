@@ -105,7 +105,8 @@ int Searcher::Worker::quiescence(int alpha, int beta, int ply) {
 }
 
 // ---- Negamax ----------------------------------------------------------------
-int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply) {
+int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply,
+                              bool can_null) {
     if ((++nodes & 2047) == 0) {
         s->total_nodes_.fetch_add(2048, std::memory_order_relaxed);
         if (s->time_up()) s->stop_.store(true, std::memory_order_relaxed);
@@ -115,6 +116,8 @@ int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply) {
     bool in_check = board.in_check();
     if (in_check) ++depth;  // check extension
     if (depth <= 0) return quiescence(alpha, beta, ply);
+
+    bool is_pv = (beta - alpha) > 1;  // full window => principal-variation node
 
     std::uint64_t key = board.key();
     TTData tte = s->tt_.probe(key);
@@ -127,6 +130,21 @@ int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply) {
             if (tte.bound == BOUND_LOWER && sc >= beta) return sc;
             if (tte.bound == BOUND_UPPER && sc <= alpha) return sc;
         }
+    }
+
+    // ---- Null-move pruning ---------------------------------------------------
+    // If we can pass the turn and STILL be winning (beta cutoff) after a
+    // reduced search, this node is too good to be relevant -> prune. Skipped
+    // in check, in PV nodes, and in likely-zugzwang (no non-pawn material).
+    if (can_null && !is_pv && !in_check && depth >= 3 &&
+        board.has_non_pawn_material(board.side_to_move())) {
+        int R = 2 + depth / 4;  // reduction
+        board.make_null_move();
+        int null_score =
+            -negamax(depth - 1 - R, -beta, -beta + 1, ply + 1, /*can_null=*/false);
+        board.unmake_null_move();
+        if (s->stop_.load(std::memory_order_relaxed)) return 0;
+        if (null_score >= beta) return beta;  // fail-high: prune
     }
 
     MoveList moves;
@@ -166,8 +184,31 @@ int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply) {
         std::swap(scored[i], scored[pick]);
         Move m = scored[i].m;
 
+        bool quiet = !is_capture(board, m) && m.type() != MT_PROMOTION;
+
         board.make_move(m);
-        int score = -negamax(depth - 1, -beta, -alpha, ply + 1);
+        bool gives_check = board.in_check();
+
+        int score;
+        if (i == 0) {
+            // Search the first (best-ordered) move with a full window.
+            score = -negamax(depth - 1, -beta, -alpha, ply + 1);
+        } else {
+            // ---- Late Move Reductions ---------------------------------------
+            // Quiet, late moves that don't give check are searched shallower
+            // with a null window; only re-searched fully if they surprise us.
+            int reduction = 0;
+            if (depth >= 3 && i >= 3 && quiet && !gives_check && !in_check) {
+                reduction = 1 + (i >= 6 ? 1 : 0);
+            }
+            score = -negamax(depth - 1 - reduction, -alpha - 1, -alpha,
+                             ply + 1);
+            // Re-search at full depth/window if it beat alpha.
+            if (score > alpha && (reduction > 0 || score < beta)) {
+                score = -negamax(depth - 1, -beta, -alpha, ply + 1);
+            }
+        }
+
         board.unmake_move(m);
 
         if (s->stop_.load(std::memory_order_relaxed)) return 0;
@@ -181,7 +222,7 @@ int Searcher::Worker::negamax(int depth, int alpha, int beta, int ply) {
                 flag = BOUND_EXACT;
                 if (alpha >= beta) {
                     flag = BOUND_LOWER;
-                    if (!is_capture(board, m) && m.type() != MT_PROMOTION) {
+                    if (quiet) {
                         if (m != killers[ply][0]) {
                             killers[ply][1] = killers[ply][0];
                             killers[ply][0] = m;

@@ -43,6 +43,10 @@ class Board {
     void make_move(Move m);
     void unmake_move(Move m);
 
+    // Null move (pass the turn) — used by null-move pruning in search.
+    void make_null_move();
+    void unmake_null_move();
+
     // Queries -----------------------------------------------------------------
     Color side_to_move() const { return stm_; }
     Square ep_square() const { return ep_; }
@@ -56,6 +60,12 @@ class Board {
     Piece piece_on(Square s) const { return mailbox_[s]; }
     Square king_square(Color c) const { return lsb(bb_[c][KING]); }
     std::uint64_t key() const { return key_; }
+
+    // True if side `c` has any piece besides pawns/king (guards null-move
+    // pruning against zugzwang in pawn endgames).
+    bool has_non_pawn_material(Color c) const {
+        return (bb_[c][KNIGHT] | bb_[c][BISHOP] | bb_[c][ROOK] | bb_[c][QUEEN]) != 0;
+    }
 
     // Is square `s` attacked by any piece of color `by` (given occupancy)?
     bool is_square_attacked(Square s, Color by) const;

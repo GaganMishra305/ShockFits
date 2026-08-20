@@ -303,4 +303,28 @@ void Board::unmake_move(Move m) {
     if (us == BLACK) --fullmove_number_;
 }
 
+// ---- Null move (pass the turn) ----------------------------------------------
+void Board::make_null_move() {
+    StateInfo st{castling_, ep_, halfmove_clock_, Piece{}, key_};
+    history_.push_back(st);
+
+    if (ep_ != SQ_NONE) {
+        key_ ^= zobrist::ep_file[file_of(ep_)];
+        ep_ = SQ_NONE;
+    }
+    key_ ^= zobrist::side;
+    ++halfmove_clock_;
+    stm_ = ~stm_;
+}
+
+void Board::unmake_null_move() {
+    stm_ = ~stm_;
+    StateInfo st = history_.back();
+    history_.pop_back();
+    castling_ = st.castling;
+    ep_ = st.ep_square;
+    halfmove_clock_ = st.halfmove_clock;
+    key_ = st.key;
+}
+
 }  // namespace shockfits
