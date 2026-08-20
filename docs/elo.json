@@ -1,55 +1,56 @@
 {
   "type": "calibration",
   "bot": "shockfits-blitz",
-  "generated": "2026-07-17T19:35:30",
+  "generated": "2026-07-18T00:46:17",
   "movetime_ms": 100,
   "ladder": [
     {
-      "elo": 1800,
+      "elo": 2200,
       "games": 20,
-      "wins": 14,
-      "draws": 4,
-      "losses": 2,
-      "score": 0.8,
-      "perf": 2040.8
+      "wins": 12,
+      "draws": 5,
+      "losses": 3,
+      "score": 0.725,
+      "perf": 2368.4
     },
     {
-      "elo": 2100,
-      "games": 20,
-      "wins": 10,
-      "draws": 6,
-      "losses": 4,
-      "score": 0.65,
-      "perf": 2207.5
-    },
-    {
-      "elo": 2400,
-      "games": 20,
-      "wins": 7,
-      "draws": 6,
-      "losses": 7,
-      "score": 0.5,
-      "perf": 2400.0
-    },
-    {
-      "elo": 2700,
+      "elo": 2500,
       "games": 20,
       "wins": 3,
-      "draws": 7,
-      "losses": 10,
-      "score": 0.325,
-      "perf": 2573.0
+      "draws": 12,
+      "losses": 5,
+      "score": 0.45,
+      "perf": 2465.1
     },
     {
-      "elo": 3000,
+      "elo": 2800,
+      "games": 20,
+      "wins": 2,
+      "draws": 7,
+      "losses": 11,
+      "score": 0.275,
+      "perf": 2631.6
+    },
+    {
+      "elo": 3050,
       "games": 20,
       "wins": 0,
-      "draws": 8,
-      "losses": 12,
-      "score": 0.2,
-      "perf": 2759.2
+      "draws": 4,
+      "losses": 16,
+      "score": 0.1,
+      "perf": 2668.3
+    },
+    {
+      "elo": 3190,
+      "games": 20,
+      "wins": 1,
+      "draws": 3,
+      "losses": 16,
+      "score": 0.125,
+      "perf": 2852.0
     }
   ],
-  "estimate_elo": 2396,
-  "crossover_elo": 2400
+  "estimate_elo": 2445,
+  "crossover_elo": 2445,
+  "perf_rating": 2488
 }

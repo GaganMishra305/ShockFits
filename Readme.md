@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml/badge.svg)](https://github.com/GaganMishra305/ShockFits/actions/workflows/ci.yml)
 
-### Current bot level: ~2400 Elo
+### Current bot level: ~2450 Elo
 
 *(performance rating for `shockfits-blitz` at 100 ms/move, measured vs Stockfish
 with calibrated `UCI_Elo` — see [Measuring strength](#measuring-strength-elo).)*
@@ -38,6 +38,7 @@ Inspired by Sebastian Lague's
 - **Bitboard** board representation (LERF), fully legal move generation
   (**perft-verified** on startpos, Kiwipete, and positions 3/4/5)
 - **Negamax + alpha-beta**, iterative deepening, quiescence, check extensions
+- **Null-move pruning**, **late move reductions (LMR)**, principal-variation search
 - Move ordering: TT move, MVV-LVA, killer moves, history heuristic
 - **Tapered PeSTO evaluation** (midgame/endgame interpolation)
 - **Zobrist hashing** + **lock-free transposition table** (Hyatt XOR scheme)
@@ -100,24 +101,27 @@ cd web && npm install && npm start   # http://localhost:3000
 `tools.arena.calibrate` plays the bot against Stockfish at several
 `UCI_LimitStrength` / `UCI_Elo` "rungs" (both sides on the same movetime, so the
 number means *strength at that time control*). Each rung yields a score rate; the
-headline is a games-weighted **performance rating**.
+headline is the **50% crossover** (the Stockfish Elo it plays evenly with), and a
+performance rating is averaged over the near-even rungs.
 
-Latest run — `shockfits-blitz` @ 100 ms/move (20 games/rung):
+Latest run — `shockfits-blitz` @ 100 ms/move (20 games/rung), *with null-move
+pruning + LMR*:
 
 | Stockfish `UCI_Elo` | Score | Perf |
 |---:|---:|---:|
-| 1800 | 80% | 2041 |
-| 2100 | 65% | 2208 |
-| 2400 | 50% | 2400 |
-| 2700 | 32% | 2573 |
-| 3000 | 20% | 2759 |
+| 2200 | 72% | 2368 |
+| 2500 | 45% | 2465 |
+| 2800 | 28% | 2632 |
+| 3050 | 10% | 2668 |
+| 3190 | 12% | 2852 |
 
-**Performance estimate: ~2396 Elo**, and the 50% crossover lands right on
-Stockfish 2400 — the two methods agree, so **~2400 Elo** is the headline.
+**Headline: ~2445 Elo** (50% crossover; near-even perf rating ~2488). It now even
+steals the occasional draw/win off Stockfish pegged at 3190.
 
 > Caveats: fast time control, and Stockfish's `UCI_Elo` is itself an
-> approximation, so read this as "plays around 2400 blitz strength," not a
-> rating-list number. Re-run `calibrate` with more games/rung to tighten further.
+> approximation, so read this as "plays around 2450 blitz strength," not a
+> rating-list number. Performance rating is only averaged over rungs where the
+> score is 20-80% (it breaks down against far-stronger opponents).
 
 ---
 

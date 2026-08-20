@@ -98,8 +98,21 @@ def main(argv=None) -> int:
         print(f"    {challenger.name}: +{rec.wins} ={rec.draws} -{rec.losses} "
               f"(score {est.score_rate*100:.0f}%)  -> perf {perf:.0f}")
 
-    estimate = round(total_perf_weight / total_games) if total_games else None
+    # Robust estimate: average performance rating over rungs that are actually
+    # near even (score in [0.2, 0.8]). Performance rating breaks down against
+    # opponents far above/below you, so far rungs are excluded to avoid
+    # inflating the number. The 50%% crossover is reported as the headline when
+    # available (most intuitive: "plays evenly with Stockfish X").
+    near = [r for r in ladder if 0.2 <= r["score"] <= 0.8]
+    if near:
+        robust = round(sum(r["perf"] * r["games"] for r in near) /
+                       sum(r["games"] for r in near))
+    elif total_games:
+        robust = round(total_perf_weight / total_games)
+    else:
+        robust = None
     crossover = interpolate_crossover(ladder)
+    estimate = round(crossover) if crossover is not None else robust
 
     out = {
         "type": "calibration",
@@ -108,6 +121,7 @@ def main(argv=None) -> int:
         "movetime_ms": args.movetime,
         "ladder": ladder,
         "estimate_elo": estimate,
+        "perf_rating": robust,
         "crossover_elo": round(crossover) if crossover is not None else None,
     }
 
@@ -120,9 +134,8 @@ def main(argv=None) -> int:
 
     print("\n=== CALIBRATION RESULT ===")
     print(f"  {challenger.name} @ {args.movetime}ms")
-    print(f"  Performance-rating estimate: {estimate} Elo")
-    if crossover is not None:
-        print(f"  50% crossover vs Stockfish:  {round(crossover)} Elo")
+    print(f"  Headline Elo (50%% crossover): {estimate}")
+    print(f"  Perf rating (near-even rungs): {robust}")
     print("  wrote web/data/elo.json + docs/elo.json")
     return 0
 
